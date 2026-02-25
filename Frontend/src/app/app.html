@@ -1,4 +1,10 @@
-<div class="flex h-screen bg-gradient-to-br from-gray-950 via-blue-950 to-gray-950 text-gray-100">
+<!-- Full Width Layout for Landing/Login/Signup -->
+<div *ngIf="!showLayout" class="min-h-screen bg-gradient-to-br from-gray-950 via-blue-950 to-gray-950">
+  <router-outlet></router-outlet>
+</div>
+
+<!-- Dashboard Layout with Sidebar -->
+<div *ngIf="showLayout" class="flex h-screen bg-gradient-to-br from-gray-950 via-blue-950 to-gray-950 text-gray-100">
 
   <!-- Sidebar -->
   <aside class="w-72 bg-gradient-to-b from-gray-900 to-gray-950 border-r border-blue-900/30 flex flex-col shadow-2xl">

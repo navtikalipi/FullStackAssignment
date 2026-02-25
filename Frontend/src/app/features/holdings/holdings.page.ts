@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HoldingsService } from '../../core/services/holdings.service';
-import { Holding } from '../../core/models/holding.model';
+import { PortfolioService } from '../../core/services/portfolio.service';
+import { PortfolioSummary } from '../../core/models/portfolio.model';
 
 @Component({
   selector: 'app-holdings',
@@ -11,23 +11,31 @@ import { Holding } from '../../core/models/holding.model';
 })
 export class HoldingsPage implements OnInit {
 
-  holdings: Holding[] = [];
+  portfolios: PortfolioSummary[] = [];
+  selectedPortfolioId: number | null = null;
   loading = false;
 
-  constructor(private service: HoldingsService) {}
+  constructor(private portfolioService: PortfolioService) {}
 
   ngOnInit(): void {
-    this.fetchHoldings();
+    this.loadPortfolios();
   }
 
-  fetchHoldings(): void {
+  private loadPortfolios(): void {
     this.loading = true;
-    this.service.getAll().subscribe({
-      next: (data: Holding[]) => {
-        this.holdings = data;
+    this.portfolioService.getSummaries().subscribe({
+      next: (data) => {
+        this.portfolios = data;
+        if (this.portfolios.length > 0) {
+          this.selectedPortfolioId = this.portfolios[0].id;
+        }
         this.loading = false;
       },
       error: () => this.loading = false
     });
+  }
+
+  onPortfolioChange(): void {
+    // Portfolio changed - could reload holdings
   }
 }

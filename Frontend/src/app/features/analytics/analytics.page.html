@@ -1,26 +1,204 @@
-<div class="p-6 space-y-6">
+<div class="space-y-8">
 
-  <h1 class="text-2xl font-bold text-gray-800">Analytics</h1>
+  <!-- Header Section -->
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-4xl font-bold text-white mb-2">Analytics</h1>
+      <p class="text-gray-400">Profit & Loss analysis and reports</p>
+    </div>
+    <div class="flex items-center space-x-4">
+      <!-- Portfolio Selector -->
+      <select 
+        *ngIf="portfolios.length > 0"
+        [(ngModel)]="selectedPortfolioId" 
+        (ngModelChange)="onPortfolioChange()"
+        class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-blue-500">
+        <option *ngFor="let p of portfolios" [value]="p.id">{{ p.portfolioName }}</option>
+      </select>
+      <!-- Period Selector -->
+      <select 
+        *ngIf="portfolios.length > 0"
+        [(ngModel)]="selectedPeriod" 
+        (ngModelChange)="onPeriodChange()"
+        class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-blue-500">
+        <option value="DAY">Today</option>
+        <option value="WEEK">This Week</option>
+        <option value="MONTH">This Month</option>
+        <option value="YEAR">This Year</option>
+        <option value="ALL">All Time</option>
+      </select>
+    </div>
+  </div>
 
-  <div class="grid md:grid-cols-2 gap-6">
+  <!-- No Portfolio State -->
+  <div *ngIf="portfolios.length === 0 && !loading" class="bg-gray-800 rounded-2xl p-12 text-center">
+    <div class="text-6xl mb-4">📊</div>
+    <h2 class="text-2xl font-bold text-white mb-2">No Portfolio Found</h2>
+    <p class="text-gray-400">Create a portfolio to view analytics!</p>
+  </div>
 
-    <!-- PnL Summary -->
-    <div class="bg-white shadow rounded-xl p-5">
-      <h2 class="font-semibold mb-3">P&L Summary</h2>
-      <p>Total Gain: ₹ {{ pnlData?.totalGain }}</p>
-      <p>Total Loss: ₹ {{ pnlData?.totalLoss }}</p>
+  <!-- Loading State -->
+  <div *ngIf="loading" class="flex justify-center items-center py-12">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+  </div>
+
+  <!-- Analytics Content -->
+  <div *ngIf="analytics && !loading" class="space-y-6">
+
+    <!-- P&L Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      
+      <!-- Total Invested -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl border border-gray-700/50">
+        <p class="text-gray-400 text-sm">Total Invested</p>
+        <h3 class="text-2xl font-bold text-white mt-2">{{ analytics.totalInvested | currency:'INR':'₹':'1.0-0' }}</h3>
+      </div>
+
+      <!-- Current Value -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl border border-gray-700/50">
+        <p class="text-gray-400 text-sm">Current Value</p>
+        <h3 class="text-2xl font-bold text-white mt-2">{{ analytics.currentValue | currency:'INR':'₹':'1.0-0' }}</h3>
+      </div>
+
+      <!-- Total P&L -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl border border-gray-700/50">
+        <p class="text-gray-400 text-sm">Total P&L</p>
+        <h3 class="text-2xl font-bold mt-2" 
+            [class.text-green-400]="analytics.totalGainLoss >= 0"
+            [class.text-red-400]="analytics.totalGainLoss < 0">
+          {{ analytics.totalGainLoss | currency:'INR':'₹':'1.0-0' }}
+        </h3>
+      </div>
+
+      <!-- Return % -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl border border-gray-700/50">
+        <p class="text-gray-400 text-sm">Return</p>
+        <h3 class="text-2xl font-bold mt-2"
+            [class.text-green-400]="analytics.totalGainLossPercent >= 0"
+            [class.text-red-400]="analytics.totalGainLossPercent < 0">
+          {{ analytics.totalGainLossPercent | number:'1.1-1' }}%
+        </h3>
+      </div>
+
     </div>
 
-    <!-- Top Movers -->
-    <div class="bg-white shadow rounded-xl p-5">
-      <h2 class="font-semibold mb-3">Top Movers</h2>
+    <!-- Realized vs Unrealized -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Unrealized Gains -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl border border-gray-700/50">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-white">Unrealized Gains</h3>
+          <span class="text-2xl">📈</span>
+        </div>
+        <p class="text-3xl font-bold" 
+           [class.text-green-400]="analytics.unrealizedGainLoss >= 0"
+           [class.text-red-400]="analytics.unrealizedGainLoss < 0">
+          {{ analytics.unrealizedGainLoss | currency:'INR':'₹':'1.0-0' }}
+        </p>
+        <p class="text-gray-400 text-sm mt-2">Paper profit from current holdings</p>
+      </div>
 
-      <div *ngFor="let stock of movers"
-           class="flex justify-between py-2 border-b text-sm">
-        <span>{{ stock.symbol }}</span>
-        <span [ngClass]="stock.change >= 0 ? 'text-green-600' : 'text-red-600'">
-          {{ stock.change }}%
-        </span>
+      <!-- Realized Gains -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl border border-gray-700/50">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-white">Realized Gains</h3>
+          <span class="text-2xl">💰</span>
+        </div>
+        <p class="text-3xl font-bold" 
+           [class.text-green-400]="analytics.realizedGainLoss >= 0"
+           [class.text-red-400]="analytics.realizedGainLoss < 0">
+          {{ analytics.realizedGainLoss | currency:'INR':'₹':'1.0-0' }}
+        </p>
+        <p class="text-gray-400 text-sm mt-2">Profits from completed transactions</p>
+      </div>
+
+    </div>
+
+    <!-- Top Performing & Loss Making Stocks -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Top Performers -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-700/30 bg-gray-900/50">
+          <h3 class="text-lg font-semibold text-green-400">🏆 Top Performers</h3>
+        </div>
+        <div class="p-4">
+          <div *ngFor="let stock of analytics.topPerformingStocks" class="flex justify-between items-center p-3 hover:bg-gray-800/50 rounded-lg">
+            <div>
+              <div class="font-semibold text-white">{{ stock.symbol }}</div>
+              <div class="text-xs text-gray-500">{{ stock.companyName }}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-white">{{ stock.currentPrice | currency:'INR':'₹':'1.0-2' }}</div>
+              <div class="text-green-400 text-sm">+{{ stock.gainLossPercent | number:'1.1-1' }}%</div>
+            </div>
+          </div>
+          <div *ngIf="!analytics.topPerformingStocks || analytics.topPerformingStocks.length === 0" class="text-center text-gray-500 py-4">
+            No data available
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Losers -->
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-700/30 bg-gray-900/50">
+          <h3 class="text-lg font-semibold text-red-400">📉 Top Loss Makers</h3>
+        </div>
+        <div class="p-4">
+          <div *ngFor="let stock of analytics.lossMakingStocks" class="flex justify-between items-center p-3 hover:bg-gray-800/50 rounded-lg">
+            <div>
+              <div class="font-semibold text-white">{{ stock.symbol }}</div>
+              <div class="text-xs text-gray-500">{{ stock.companyName }}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-white">{{ stock.currentPrice | currency:'INR':'₹':'1.0-2' }}</div>
+              <div class="text-red-400 text-sm">{{ stock.gainLossPercent | number:'1.1-1' }}%</div>
+            </div>
+          </div>
+          <div *ngIf="!analytics.lossMakingStocks || analytics.lossMakingStocks.length === 0" class="text-center text-gray-500 py-4">
+            No data available
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sector Allocation -->
+    <div *ngIf="analytics.sectorAllocation && analytics.sectorAllocation.length > 0" class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-700/30 bg-gray-900/50">
+        <h3 class="text-lg font-semibold text-white">📊 Sector Allocation</h3>
+      </div>
+      <div class="p-4">
+        <div *ngFor="let item of analytics.sectorAllocation" class="flex justify-between items-center p-3 hover:bg-gray-800/50 rounded-lg">
+          <div>
+            <div class="font-semibold text-white">{{ item.sector }}</div>
+            <div class="text-xs text-gray-500">{{ item.stocks }} stocks</div>
+          </div>
+          <div class="text-right">
+            <div class="text-white">{{ item.currentValue | currency:'INR':'₹':'1.0-0' }}</div>
+            <div class="text-gray-400 text-sm">{{ item.percentage | number:'1.1-1' }}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl border border-gray-700/50">
+      <h3 class="text-lg font-semibold text-white mb-4">📥 Export Reports</h3>
+      <div class="flex space-x-4">
+        <button 
+          (click)="exportReport('PDF')"
+          class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg flex items-center space-x-2">
+          <span>📄</span>
+          <span>Export PDF</span>
+        </button>
+        <button 
+          (click)="exportReport('EXCEL')"
+          class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center space-x-2">
+          <span>📊</span>
+          <span>Export Excel</span>
+        </button>
       </div>
     </div>
 

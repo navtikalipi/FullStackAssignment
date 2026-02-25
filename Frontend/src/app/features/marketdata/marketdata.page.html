@@ -19,13 +19,15 @@
   <div *ngIf="quote"
        class="bg-white shadow rounded-xl p-6 space-y-2 w-96">
 
-    <h2 class="text-lg font-semibold">{{ quote.symbol }}</h2>
-    <p>Price: ₹ {{ quote.price }}</p>
-    <p>High: ₹ {{ quote.high }}</p>
-    <p>Low: ₹ {{ quote.low }}</p>
+    <h2 class="text-lg font-semibold">{{ quote.symbol }} - {{ quote.companyName }}</h2>
+    <p>Price: ₹ {{ quote.currentPrice }}</p>
+    <p>High: ₹ {{ quote.dayHigh }}</p>
+    <p>Low: ₹ {{ quote.dayLow }}</p>
+    <p>Volume: {{ quote.volume }}</p>
     <p [ngClass]="quote.change >= 0 ? 'text-green-600' : 'text-red-600'">
-      Change: {{ quote.change }}%
+      Change: ₹ {{ quote.change }} ({{ quote.changePercent }}%)
     </p>
+    <p class="text-sm text-gray-500">Last Updated: {{ quote.lastUpdated }}</p>
 
   </div>
 
