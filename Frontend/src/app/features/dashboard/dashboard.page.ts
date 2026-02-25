@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { PortfolioService } from '../../core/services/portfolio.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { DashboardData } from '../../core/models/analytics.model';
-import { Portfolio, PortfolioSummary } from '../../core/models/portfolio.model';
+import { PortfolioSummary } from '../../core/models/portfolio.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -13,13 +13,9 @@ import { Portfolio, PortfolioSummary } from '../../core/models/portfolio.model';
 })
 export class DashboardPage implements OnInit {
 
-<<<<<<< HEAD
   portfolios: PortfolioSummary[] = [];
   selectedPortfolioId: number | null = null;
-  dashboard!: DashboardData;
-=======
-  dashboard: Dashboard | null = null;
->>>>>>> f947157924cbe88eb7a8b43a0cad16fa73dd23a0
+  dashboard: DashboardData | null = null;
   loading = false;
 
   constructor(

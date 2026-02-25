@@ -17,6 +17,8 @@ export class AnalyticsPage implements OnInit {
   selectedPortfolioId: number | null = null;
   selectedPeriod: string = 'ALL';
   analytics: AnalyticsData | null = null;
+  pnlData: { totalGain: number; totalLoss: number } = { totalGain: 0, totalLoss: 0 };
+  movers: { symbol: string; change: number }[] = [];
   loading = false;
 
   constructor(

@@ -5,25 +5,6 @@
     <p class="page-subtitle">Search and view real-time stock quotes</p>
   </div>
 
-<<<<<<< HEAD
-  <!-- Result Card -->
-  <div *ngIf="quote"
-       class="bg-white shadow rounded-xl p-6 space-y-2 w-96">
-
-    <h2 class="text-lg font-semibold">{{ quote.symbol }} - {{ quote.companyName }}</h2>
-    <p>Price: ₹ {{ quote.currentPrice }}</p>
-    <p>High: ₹ {{ quote.dayHigh }}</p>
-    <p>Low: ₹ {{ quote.dayLow }}</p>
-    <p>Volume: {{ quote.volume }}</p>
-    <p [ngClass]="quote.change >= 0 ? 'text-green-600' : 'text-red-600'">
-      Change: ₹ {{ quote.change }} ({{ quote.changePercent }}%)
-    </p>
-    <p class="text-sm text-gray-500">Last Updated: {{ quote.lastUpdated }}</p>
-
-  </div>
-
-</div>
-=======
   <!-- Search Section -->
   <div class="search-card">
     <div class="search-input-group">
@@ -48,14 +29,14 @@
     <div class="quote-header">
       <div class="quote-symbol">
         <h2>{{ quote.symbol }}</h2>
-        <p class="quote-subtitle">Stock Information</p>
+        <p class="quote-subtitle">{{ quote.companyName }}</p>
       </div>
       <div class="quote-price">
-        <p class="current-price">₹ {{ quote.price | number:'1.2-2' }}</p>
+        <p class="current-price">₹ {{ quote.currentPrice | number:'1.2-2' }}</p>
         <p class="price-change" [class.positive]="quote.change >= 0" [class.negative]="quote.change < 0">
           <span *ngIf="quote.change >= 0">▲</span>
           <span *ngIf="quote.change < 0">▼</span>
-          {{ quote.change | number:'1.2-2' }}%
+          {{ quote.change | number:'1.2-2' }} ({{ quote.changePercent | number:'1.2-2' }}%)
         </p>
       </div>
     </div>
@@ -63,11 +44,11 @@
     <div class="quote-grid">
       <div class="quote-item">
         <span class="label">High</span>
-        <span class="value">₹ {{ quote.high | number:'1.2-2' }}</span>
+        <span class="value">₹ {{ quote.dayHigh || 0 | number:'1.2-2' }}</span>
       </div>
       <div class="quote-item">
         <span class="label">Low</span>
-        <span class="value">₹ {{ quote.low | number:'1.2-2' }}</span>
+        <span class="value">₹ {{ quote.dayLow || 0 | number:'1.2-2' }}</span>
       </div>
       <div class="quote-item">
         <span class="label">Volume</span>
@@ -305,4 +286,3 @@
     }
   }
 </style>
->>>>>>> f947157924cbe88eb7a8b43a0cad16fa73dd23a0

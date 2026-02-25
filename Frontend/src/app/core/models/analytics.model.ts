@@ -20,7 +20,6 @@ export interface TopMover {
   companyName: string;
   currentPrice: number;
   change: number;
-<<<<<<< HEAD
   changePercent: number;
 }
 
@@ -110,10 +109,4 @@ export interface PortfolioReportSummary {
   profitableStocks: number;
   lossStocks: number;
   topSector: string;
-=======
-  high: number;
-  low: number;
-  volume?: number;
-  marketCap?: number;
->>>>>>> f947157924cbe88eb7a8b43a0cad16fa73dd23a0
 }

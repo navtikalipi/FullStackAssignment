@@ -42,9 +42,9 @@ public class Portfolio extends BaseEntity {
     @OrderBy("transactionDate DESC")
     private List<Transaction> transactions = new ArrayList<>();
 
-    @Column(name = "total_invested", precision = 15, scale = 2)
+    @Column(name = "total_invested")
     private BigDecimal totalInvested = BigDecimal.ZERO;
 
-    @Column(name = "current_value", precision = 15, scale = 2)
+    @Column(name = "current_value")
     private BigDecimal currentValue = BigDecimal.ZERO;
 }
