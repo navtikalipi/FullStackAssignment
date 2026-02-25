@@ -6,7 +6,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
+@EnableJpaAuditing
 public class PortfolioApplication {
+
     public static void main(String[] args) {
         SpringApplication.run(PortfolioApplication.class, args);
     }

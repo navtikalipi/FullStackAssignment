@@ -40,6 +40,7 @@ public class ApiResponse<T> {
                 .success(false)
                 .message(message)
                 .timestamp(LocalDateTime.now())
+                .data(null);
                 .build();
     }
 }
