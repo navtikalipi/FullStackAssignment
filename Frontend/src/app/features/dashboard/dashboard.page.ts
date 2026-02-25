@@ -11,7 +11,7 @@ import { Dashboard } from '../../core/models/dashboard.model';
 })
 export class DashboardPage implements OnInit {
 
-  dashboard!: Dashboard;
+  dashboard: Dashboard | null = null;
   loading = false;
 
   constructor(private dashboardService: DashboardService) {}

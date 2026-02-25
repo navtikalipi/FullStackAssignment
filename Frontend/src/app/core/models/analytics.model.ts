@@ -8,4 +8,6 @@ export interface MarketData {
   change: number;
   high: number;
   low: number;
+  volume?: number;
+  marketCap?: number;
 }
