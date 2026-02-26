@@ -1,44 +1,49 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiHttpClient } from '../api/http-client';
-import { ENDPOINTS } from '../api/endpoints';
-import { Portfolio, PortfolioRequest, PortfolioSummary } from '../models/portfolio.model';
-import { DashboardData } from '../models/analytics.model';
+import { environment } from '../../../environments/environment';
+import {
+  ApiResponse, DashboardData, TotalInvestment, CurrentValue,
+  TotalGain, PnLData, WinRateData, ReturnsData, PortfolioSummary
+} from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class PortfolioService {
+  private apiUrl = `${environment.apiUrl}/portfolio`;
 
-  constructor(private api: ApiHttpClient) {}
+  constructor(private http: HttpClient) {}
 
-  getAll(): Observable<Portfolio[]> {
-    return this.api.get<Portfolio[]>(ENDPOINTS.PORTFOLIOS);
+  getDashboard(): Observable<ApiResponse<DashboardData>> {
+    return this.http.get<ApiResponse<DashboardData>>(`${this.apiUrl}/dashboard`);
   }
 
-  getSummaries(): Observable<PortfolioSummary[]> {
-    return this.api.get<PortfolioSummary[]>(ENDPOINTS.PORTFOLIOS);
+  getTotalInvestment(): Observable<ApiResponse<TotalInvestment>> {
+    return this.http.get<ApiResponse<TotalInvestment>>(`${this.apiUrl}/total-investment`);
   }
 
-  getById(id: number): Observable<Portfolio> {
-    return this.api.get<Portfolio>(`${ENDPOINTS.PORTFOLIOS}/${id}`);
+  getCurrentValue(): Observable<ApiResponse<CurrentValue>> {
+    return this.http.get<ApiResponse<CurrentValue>>(`${this.apiUrl}/current-value`);
   }
 
-  create(portfolio: PortfolioRequest): Observable<Portfolio> {
-    return this.api.post<Portfolio>(ENDPOINTS.PORTFOLIOS, portfolio);
+  getTotalGain(): Observable<ApiResponse<TotalGain>> {
+    return this.http.get<ApiResponse<TotalGain>>(`${this.apiUrl}/total-gain`);
   }
 
-  update(id: number, portfolio: PortfolioRequest): Observable<Portfolio> {
-    return this.api.put<Portfolio>(`${ENDPOINTS.PORTFOLIOS}/${id}`, portfolio);
+  getPnL(period: string = 'monthly'): Observable<ApiResponse<PnLData>> {
+    const params = new HttpParams().set('period', period);
+    return this.http.get<ApiResponse<PnLData>>(`${this.apiUrl}/pnl`, { params });
   }
 
-  delete(id: number): Observable<void> {
-    return this.api.delete<void>(`${ENDPOINTS.PORTFOLIOS}/${id}`);
+  getWinRate(): Observable<ApiResponse<WinRateData>> {
+    return this.http.get<ApiResponse<WinRateData>>(`${this.apiUrl}/win-rate`);
   }
 
-  getDashboard(id: number): Observable<DashboardData> {
-    return this.api.get<DashboardData>(ENDPOINTS.PORTFOLIO_DASHBOARD(id));
+  getReturns(period: string = 'yearly'): Observable<ApiResponse<ReturnsData>> {
+    const params = new HttpParams().set('period', period);
+    return this.http.get<ApiResponse<ReturnsData>>(`${this.apiUrl}/returns`, { params });
   }
 
-  refreshPrices(id: number): Observable<Portfolio> {
-    return this.api.post<Portfolio>(ENDPOINTS.PORTFOLIO_REFRESH(id), {});
+  getSummary(): Observable<ApiResponse<PortfolioSummary>> {
+    return this.http.get<ApiResponse<PortfolioSummary>>(`${this.apiUrl}/summary`);
   }
 }

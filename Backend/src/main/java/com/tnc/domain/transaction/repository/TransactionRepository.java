@@ -19,6 +19,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     List<Transaction> findByStockId(Long stockId);
 
+    List<Transaction> findByStockIdOrderByTransactionDateAscIdAsc(Long stockId);
+
     List<Transaction> findByPortfolioIdAndTransactionDateBetween(Long portfolioId, LocalDate startDate, LocalDate endDate);
 
     @Query("SELECT t FROM Transaction t WHERE t.portfolio.id = :portfolioId AND t.transactionType = :type ORDER BY t.transactionDate DESC")

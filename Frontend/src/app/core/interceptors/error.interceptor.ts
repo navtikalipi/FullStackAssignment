@@ -19,7 +19,7 @@ export class ErrorInterceptor implements HttpInterceptor {
         }
         
         console.error('API Error:', errorMessage);
-        return throwError(() => new Error(errorMessage));
+        return throwError(() => error);
       })
     );
   }

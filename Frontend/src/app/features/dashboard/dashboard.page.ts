@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PortfolioService } from '../../core/services/portfolio.service';
-import { AnalyticsService } from '../../core/services/analytics.service';
 import { DashboardData } from '../../core/models/analytics.model';
 import { PortfolioSummary } from '../../core/models/portfolio.model';
 
@@ -17,11 +16,9 @@ export class DashboardPage implements OnInit {
   selectedPortfolioId: number | null = null;
   dashboard: DashboardData | null = null;
   loading = false;
+  errorMessage = '';
 
-  constructor(
-    private portfolioService: PortfolioService,
-    private analyticsService: AnalyticsService
-  ) {}
+  constructor(private portfolioService: PortfolioService) {}
 
   ngOnInit(): void {
     this.loadPortfolios();
@@ -29,6 +26,7 @@ export class DashboardPage implements OnInit {
 
   private loadPortfolios(): void {
     this.loading = true;
+    this.errorMessage = '';
     this.portfolioService.getSummaries().subscribe({
       next: (data) => {
         this.portfolios = data;
@@ -38,7 +36,10 @@ export class DashboardPage implements OnInit {
         }
         this.loading = false;
       },
-      error: () => this.loading = false
+      error: (error) => {
+        this.errorMessage = error?.message || 'Unable to load portfolios. Check backend server status.';
+        this.loading = false;
+      }
     });
   }
 
@@ -52,12 +53,17 @@ export class DashboardPage implements OnInit {
     if (!this.selectedPortfolioId) return;
     
     this.loading = true;
+    this.errorMessage = '';
     this.portfolioService.getDashboard(this.selectedPortfolioId).subscribe({
       next: (data: DashboardData) => {
         this.dashboard = data;
         this.loading = false;
       },
-      error: () => this.loading = false
+      error: (error) => {
+        this.dashboard = null;
+        this.errorMessage = error?.message || 'Unable to load dashboard data from backend.';
+        this.loading = false;
+      }
     });
   }
 
@@ -65,11 +71,15 @@ export class DashboardPage implements OnInit {
     if (!this.selectedPortfolioId) return;
     
     this.loading = true;
+    this.errorMessage = '';
     this.portfolioService.refreshPrices(this.selectedPortfolioId).subscribe({
       next: () => {
         this.loadDashboard();
       },
-      error: () => this.loading = false
+      error: (error) => {
+        this.errorMessage = error?.message || 'Unable to refresh prices.';
+        this.loading = false;
+      }
     });
   }
 }

@@ -1,72 +1,48 @@
 package com.tnc.domain.transaction.entity;
 
-import com.tnc.domain.portfolio.entity.Portfolio;
-import com.tnc.domain.stock.entity.Stock;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.tnc.persistence.entity.BaseEntity;
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import javax.persistence.*;
+import java.util.Date;
 
-@Entity
-@Table(name = "transactions", indexes = {
-    @Index(name = "idx_transaction_portfolio", columnList = "portfolio_id"),
-    @Index(name = "idx_transaction_stock", columnList = "stock_id"),
-    @Index(name = "idx_transaction_date", columnList = "transaction_date")
-})
 @Data
 @EqualsAndHashCode(callSuper = true)
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Table(name = "transactions")
 public class Transaction extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "portfolio_id", nullable = false)
-    private Portfolio portfolio;
+    @Column(nullable = false)
+    private String symbol;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stock_id", nullable = false)
-    private Stock stock;
+    @Column(nullable = false)
+    private String type; // BUY or SELL
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "transaction_type", nullable = false)
-    private TransactionType transactionType;
+    @Column(nullable = false)
+    private Double quantity;
 
-    @Column(name = "quantity", nullable = false)
-    private Integer quantity;
-
-    @Column(name = "price", nullable = false, precision = 15, scale = 2)
-    private BigDecimal price;
-
-    @Column(name = "total_amount", nullable = false, precision = 15, scale = 2)
-    private BigDecimal totalAmount;
-
-    @Column(name = "brokerage", precision = 15, scale = 2)
-    private BigDecimal brokerage = BigDecimal.ZERO;
-
-    @Column(name = "tax", precision = 15, scale = 2)
-    private BigDecimal tax = BigDecimal.ZERO;
+    @Column(nullable = false)
+    private Double price;
 
     @Column(name = "transaction_date", nullable = false)
-    private LocalDate transactionDate;
+    @Temporal(TemporalType.DATE)
+    private Date transactionDate;
 
-    @Column(name = "notes")
+    @Column(name = "sell_price")
+    private Double sellPrice;
+
+    @Column(columnDefinition = "TEXT")
     private String notes;
 
-    @Column(name = "is_realized")
-    private Boolean isRealized = false;
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonBackReference
+    private com.tnc.domain.user.entity.User user;
 
-    public enum TransactionType {
-        BUY, SELL
-    }
-
-    @PrePersist
-    public void calculateTotal() {
-        this.totalAmount = this.price.multiply(new BigDecimal(this.quantity));
-    }
+    @ManyToOne
+    @JoinColumn(name = "portfolio_id")
+    @JsonBackReference
+    private com.tnc.domain.portfolio.entity.Portfolio portfolio;
 }

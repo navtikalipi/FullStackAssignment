@@ -1,33 +1,54 @@
 import { Routes } from '@angular/router';
-
-import { LandingComponent } from './pages/landing/landing.component';
-import { DashboardPage } from './features/dashboard/dashboard.page';
-import { TransactionsPage } from './features/transactions/transactions.page';
-import { HoldingsPage } from './features/holdings/holdings.page';
-import { MarketdataPage } from './features/marketdata/marketdata.page';
-import { AnalyticsPage } from './features/analytics/analytics.page';
-import { ReportsPage } from './features/reports/reports.page';
-import { LoginComponent } from './pages/login/login.component';
-import { SignupComponent } from './pages/signup/signup.component';
-import { AuthGuard } from './core/guards/auth.guard';
+import { authGuard } from './core/guards/auth.guard';
+import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 
 export const routes: Routes = [
-
-  // Default Route - Landing Page
-  { path: '', component: LandingComponent },
-
-  // Public Routes
-  { path: 'login', component: LoginComponent },
-  { path: 'signup', component: SignupComponent },
-
-  // Main Features (Protected)
-  { path: 'dashboard', component: DashboardPage, canActivate: [AuthGuard] },
-  { path: 'transactions', component: TransactionsPage, canActivate: [AuthGuard] },
-  { path: 'holdings', component: HoldingsPage, canActivate: [AuthGuard] },
-  { path: 'marketdata', component: MarketdataPage, canActivate: [AuthGuard] },
-  { path: 'analytics', component: AnalyticsPage, canActivate: [AuthGuard] },
-  { path: 'reports', component: ReportsPage, canActivate: [AuthGuard] },
-
-  // Wildcard - Redirect to landing
-  { path: '**', component: LandingComponent }
+  {
+    path: 'login',
+    loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent)
+  },
+  {
+    path: 'register',
+    loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent)
+  },
+  {
+    path: '',
+    component: MainLayoutComponent,
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+      },
+      {
+        path: 'holdings',
+        loadComponent: () => import('./features/holdings/holdings.component').then(m => m.HoldingsComponent)
+      },
+      {
+        path: 'transactions',
+        loadComponent: () => import('./features/transactions/transactions.component').then(m => m.TransactionsComponent)
+      },
+      {
+        path: 'market',
+        loadComponent: () => import('./features/market/market.component').then(m => m.MarketComponent)
+      },
+      {
+        path: 'analytics',
+        loadComponent: () => import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent)
+      },
+      {
+        path: 'reports',
+        loadComponent: () => import('./features/reports/reports.component').then(m => m.ReportsComponent)
+      },
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      }
+    ]
+  },
+  {
+    path: '**',
+    redirectTo: 'login'
+  }
 ];

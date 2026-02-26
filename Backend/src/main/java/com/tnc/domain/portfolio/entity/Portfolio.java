@@ -1,50 +1,44 @@
 package com.tnc.domain.portfolio.entity;
 
-import com.tnc.domain.stock.entity.Stock;
-import com.tnc.domain.transaction.entity.Transaction;
-import com.tnc.domain.user.entity.User;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.tnc.persistence.entity.BaseEntity;
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
+import javax.persistence.*;
 import java.util.List;
 
-@Entity
-@Table(name = "portfolios", indexes = {
-    @Index(name = "idx_portfolio_user", columnList = "user_id")
-})
 @Data
 @EqualsAndHashCode(callSuper = true)
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Table(name = "portfolios")
 public class Portfolio extends BaseEntity {
 
-    @Column(name = "portfolio_name", nullable = false)
-    private String portfolioName;
+    @Column(nullable = false)
+    private String name;
 
-    @Column(name = "description")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @Column(name = "total_value")
+    private Double totalValue;
+
+    @Column(name = "total_cost")
+    private Double totalCost;
+
+    @Column(name = "total_profit_loss")
+    private Double totalProfitLoss;
+
+    @Column(name = "is_default")
+    private Boolean isDefault = false;
+
+    @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JsonBackReference
+    private com.tnc.domain.user.entity.User user;
 
-    @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("createdAt DESC")
-    private List<Stock> stocks = new ArrayList<>();
-
-    @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("transactionDate DESC")
-    private List<Transaction> transactions = new ArrayList<>();
-
-    @Column(name = "total_invested")
-    private BigDecimal totalInvested = BigDecimal.ZERO;
-
-    @Column(name = "current_value")
-    private BigDecimal currentValue = BigDecimal.ZERO;
+    @OneToMany(mappedBy = "portfolio", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<com.tnc.domain.holdings.entity.Holding> holdings;
 }

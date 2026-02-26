@@ -1,50 +1,59 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
-import { AuthResponse, SignupRequest, SigninRequest, ApiResponse } from '../models/user.model';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { LoginRequest, RegisterRequest, AuthResponse, RegisterResponse } from '../models';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = environment.apiBaseUrl;
+  private apiUrl = environment.apiUrl;
+  private tokenKey = 'auth_token';
+  private usernameKey = 'auth_username';
+  private isLoggedInSubject = new BehaviorSubject<boolean>(this.hasToken());
 
-  constructor(private http: HttpClient) {}
+  isLoggedIn$ = this.isLoggedInSubject.asObservable();
 
-  signup(request: SignupRequest): Observable<AuthResponse> {
-    return this.http.post<ApiResponse<AuthResponse>>(`${this.apiUrl}/api/auth/signup`, request)
-      .pipe(map(response => response.data));
+  constructor(private http: HttpClient, private router: Router) {}
+
+  register(request: RegisterRequest): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(`${this.apiUrl}/api/register`, request);
   }
 
-  signin(request: SigninRequest): Observable<AuthResponse> {
-    return this.http.post<ApiResponse<AuthResponse>>(`${this.apiUrl}/api/auth/signin`, request)
-      .pipe(map(response => response.data));
+  login(request: LoginRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/authenticate`, request).pipe(
+      tap(response => {
+        this.setToken(response.token);
+        this.setUsername(request.username);
+        this.isLoggedInSubject.next(true);
+      })
+    );
   }
 
   logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.usernameKey);
+    this.isLoggedInSubject.next(false);
+    this.router.navigate(['/login']);
   }
 
   getToken(): string | null {
-    return localStorage.getItem('token');
+    return localStorage.getItem(this.tokenKey);
   }
 
-  setToken(token: string): void {
-    localStorage.setItem('token', token);
+  getUsername(): string | null {
+    return localStorage.getItem(this.usernameKey);
   }
 
-  setUser(user: AuthResponse): void {
-    localStorage.setItem('user', JSON.stringify(user));
-  }
-
-  getUser(): AuthResponse | null {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
-  }
-
-  isAuthenticated(): boolean {
+  hasToken(): boolean {
     return !!this.getToken();
+  }
+
+  private setToken(token: string): void {
+    localStorage.setItem(this.tokenKey, token);
+  }
+
+  private setUsername(username: string): void {
+    localStorage.setItem(this.usernameKey, username);
   }
 }

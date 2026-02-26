@@ -1,41 +1,30 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiHttpClient } from '../api/http-client';
-import { ENDPOINTS } from '../api/endpoints';
-import { Transaction, TransactionRequest, TransactionUpdateRequest } from '../models/transaction.model';
+import { environment } from '../../../environments/environment';
+import { ApiResponse, Transaction, CreateTransactionRequest } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionsService {
+  private apiUrl = `${environment.apiUrl}/transactions`;
 
-  constructor(private api: ApiHttpClient) {}
+  constructor(private http: HttpClient) {}
 
-  getByPortfolio(portfolioId: number): Observable<Transaction[]> {
-    return this.api.get<Transaction[]>(ENDPOINTS.TRANSACTIONS(portfolioId));
+  getTransactions(type?: string, limit: number = 50, offset: number = 0): Observable<ApiResponse<Transaction[]>> {
+    let params = new HttpParams()
+      .set('limit', limit.toString())
+      .set('offset', offset.toString());
+    if (type) {
+      params = params.set('type', type);
+    }
+    return this.http.get<ApiResponse<Transaction[]>>(this.apiUrl, { params });
   }
 
-  getById(portfolioId: number, id: number): Observable<Transaction> {
-    return this.api.get<Transaction>(ENDPOINTS.TRANSACTION(portfolioId, id));
+  getTransactionById(id: number): Observable<ApiResponse<Transaction>> {
+    return this.http.get<ApiResponse<Transaction>>(`${this.apiUrl}/${id}`);
   }
 
-  create(portfolioId: number, transaction: TransactionRequest): Observable<Transaction> {
-    return this.api.post<Transaction>(ENDPOINTS.TRANSACTIONS(portfolioId), transaction);
-  }
-
-  update(portfolioId: number, id: number, transaction: TransactionUpdateRequest): Observable<Transaction> {
-    return this.api.put<Transaction>(ENDPOINTS.TRANSACTION(portfolioId, id), transaction);
-  }
-
-  delete(portfolioId: number, id: number): Observable<void> {
-    return this.api.delete<void>(ENDPOINTS.TRANSACTION(portfolioId, id));
-  }
-
-  getBySymbol(portfolioId: number, symbol: string): Observable<Transaction[]> {
-    return this.api.get<Transaction[]>(`${ENDPOINTS.TRANSACTIONS(portfolioId)}?symbol=${symbol}`);
-  }
-
-  getByDateRange(portfolioId: number, startDate: string, endDate: string): Observable<Transaction[]> {
-    return this.api.get<Transaction[]>(
-      `${ENDPOINTS.TRANSACTIONS(portfolioId)}?startDate=${startDate}&endDate=${endDate}`
-    );
+  createTransaction(transaction: CreateTransactionRequest): Observable<ApiResponse<Transaction>> {
+    return this.http.post<ApiResponse<Transaction>>(this.apiUrl, transaction);
   }
 }

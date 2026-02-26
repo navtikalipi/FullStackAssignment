@@ -12,13 +12,13 @@ import com.tnc.domain.transaction.dto.TransactionDTO;
 import com.tnc.domain.transaction.entity.Transaction;
 import com.tnc.domain.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,8 +39,10 @@ public class TransactionService {
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found"));
 
+        validateTransactionRequest(request);
+
         // Get or create stock
-        Stock stock = getOrCreateStock(portfolio, request.getSymbol());
+        Stock stock = getOrCreateStock(portfolio, request.getSymbol(), request.getTransactionType());
 
         // Validate sell transaction has sufficient quantity
         if (request.getTransactionType() == Transaction.TransactionType.SELL) {
@@ -63,7 +65,7 @@ public class TransactionService {
         transaction = transactionRepository.save(transaction);
 
         // Update stock holdings
-        updateStockHoldings(stock, request.getTransactionType(), request.getQuantity(), request.getPrice());
+        recalculateStockHoldings(stock.getId());
 
         // Update portfolio totals
         updatePortfolioTotals(portfolio);
@@ -72,14 +74,15 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TransactionDTO.TransactionResponse> getPortfolioTransactions(Long userId, 
+    public List<TransactionDTO.TransactionResponse> getPortfolioTransactions(Long userId, 
             Long portfolioId, Pageable pageable) {
         
         portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found"));
 
-        return transactionRepository.findByPortfolioId(portfolioId, pageable)
-                .map(this::mapToResponseWithStock);
+        return transactionRepository.findByPortfolioId(portfolioId, pageable).stream()
+            .map(this::mapToResponseWithStock)
+            .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -110,22 +113,24 @@ public class TransactionService {
     public TransactionDTO.TransactionResponse updateTransaction(Long userId, Long portfolioId, 
             Long transactionId, TransactionDTO.TransactionUpdateRequest request) {
         
-        portfolioRepository.findByIdAndUserId(portfolioId, userId)
+        Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found"));
 
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
 
-        // If quantity or price is being updated, need to recalculate holdings
-        if (request.getQuantity() != null || request.getPrice() != null) {
-            // This is complex - for simplicity, we'll just update the fields
-            // A real implementation would recalculate the entire position
-        }
+        ensureTransactionBelongsToPortfolio(transaction, portfolioId);
 
         if (request.getQuantity() != null) {
+            if (request.getQuantity() <= 0) {
+                throw new BadRequestException("Quantity must be greater than zero");
+            }
             transaction.setQuantity(request.getQuantity());
         }
         if (request.getPrice() != null) {
+            if (request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BadRequestException("Price must be greater than zero");
+            }
             transaction.setPrice(request.getPrice());
         }
         if (request.getBrokerage() != null) {
@@ -143,6 +148,9 @@ public class TransactionService {
 
         transaction = transactionRepository.save(transaction);
 
+        recalculateStockHoldings(transaction.getStock().getId());
+        updatePortfolioTotals(portfolio);
+
         return mapToResponseWithStock(transaction);
     }
 
@@ -155,34 +163,31 @@ public class TransactionService {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
 
-        // Reverse the transaction effect on holdings
-        Stock stock = transaction.getStock();
-        if (transaction.getTransactionType() == Transaction.TransactionType.BUY) {
-            // Reverse buy = sell (reduce holdings)
-            stock.setTotalQuantity(stock.getTotalQuantity() - transaction.getQuantity());
-        } else {
-            // Reverse sell = buy (increase holdings)
-            stock.setTotalQuantity(stock.getTotalQuantity() + transaction.getQuantity());
-        }
-
-        stockRepository.save(stock);
-        portfolio.getTransactions().remove(transaction);
+        ensureTransactionBelongsToPortfolio(transaction, portfolioId);
+        Long stockId = transaction.getStock().getId();
         
         transactionRepository.delete(transaction);
+
+        recalculateStockHoldings(stockId);
         updatePortfolioTotals(portfolio);
     }
 
-    private Stock getOrCreateStock(Portfolio portfolio, String symbol) {
-        return stockRepository.findByPortfolioIdAndSymbol(portfolio.getId(), symbol.toUpperCase())
+    private Stock getOrCreateStock(Portfolio portfolio, String symbol, Transaction.TransactionType transactionType) {
+        String normalizedSymbol = symbol.trim().toUpperCase();
+        return stockRepository.findByPortfolioIdAndSymbol(portfolio.getId(), normalizedSymbol)
                 .orElseGet(() -> {
+                    if (transactionType == Transaction.TransactionType.SELL) {
+                        throw new BadRequestException("Cannot sell stock that does not exist in portfolio");
+                    }
+
                     Stock newStock = new Stock();
-                    newStock.setSymbol(symbol.toUpperCase());
-                    newStock.setCompanyName(marketDataService.getStockName(symbol));
+                    newStock.setSymbol(normalizedSymbol);
+                    newStock.setCompanyName(marketDataService.getStockName(normalizedSymbol));
                     newStock.setPortfolio(portfolio);
                     newStock.setTotalQuantity(0);
                     newStock.setAverageBuyPrice(BigDecimal.ZERO);
                     newStock.setTotalInvested(BigDecimal.ZERO);
-                    newStock.setCurrentPrice(marketDataService.getCurrentPrice(symbol));
+                    newStock.setCurrentPrice(marketDataService.getCurrentPrice(normalizedSymbol));
                     newStock.setCurrentValue(BigDecimal.ZERO);
                     newStock.setProfitLoss(BigDecimal.ZERO);
                     newStock.setProfitLossPercentage(BigDecimal.ZERO);
@@ -196,41 +201,71 @@ public class TransactionService {
         }
     }
 
-    private void updateStockHoldings(Stock stock, Transaction.TransactionType type, 
-            Integer quantity, BigDecimal price) {
-        
-        BigDecimal totalCost = price.multiply(new BigDecimal(quantity));
-        
-        if (type == Transaction.TransactionType.BUY) {
-            // Calculate new average buy price
-            BigDecimal newTotalQuantity = new BigDecimal(stock.getTotalQuantity() + quantity);
-            BigDecimal newTotalInvested = stock.getTotalInvested().add(totalCost);
-            
-            stock.setTotalQuantity(stock.getTotalQuantity() + quantity);
-            stock.setTotalInvested(newTotalInvested);
-            stock.setAverageBuyPrice(newTotalInvested.divide(newTotalQuantity, 2, RoundingMode.HALF_UP));
-        } else {
-            // Sell - reduce quantity but keep average price same
-            stock.setTotalQuantity(stock.getTotalQuantity() - quantity);
-            
-            BigDecimal proportionSold = new BigDecimal(quantity)
-                    .divide(new BigDecimal(stock.getTotalQuantity() + quantity), 4, RoundingMode.HALF_UP);
-            BigDecimal costReduction = stock.getTotalInvested().multiply(proportionSold);
-            stock.setTotalInvested(stock.getTotalInvested().subtract(costReduction));
+    private void recalculateStockHoldings(Long stockId) {
+        Stock stock = stockRepository.findById(stockId)
+                .orElseThrow(() -> new ResourceNotFoundException("Stock not found"));
+
+        List<Transaction> transactions = transactionRepository.findByStockIdOrderByTransactionDateAscIdAsc(stockId)
+                .stream()
+                .sorted(Comparator
+                        .comparing(Transaction::getTransactionDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Transaction::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+
+        int totalQuantity = 0;
+        BigDecimal totalInvested = BigDecimal.ZERO;
+        BigDecimal averageBuyPrice = BigDecimal.ZERO;
+
+        for (Transaction transaction : transactions) {
+            int quantity = transaction.getQuantity();
+            BigDecimal price = transaction.getPrice();
+
+            if (transaction.getTransactionType() == Transaction.TransactionType.BUY) {
+                BigDecimal transactionCost = price.multiply(BigDecimal.valueOf(quantity));
+                totalInvested = totalInvested.add(transactionCost);
+                totalQuantity += quantity;
+                averageBuyPrice = totalQuantity > 0
+                        ? totalInvested.divide(BigDecimal.valueOf(totalQuantity), 4, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO;
+                transaction.setIsRealized(false);
+            } else {
+                if (quantity > totalQuantity) {
+                    throw new BadRequestException("Sell quantity exceeds available holdings for " + stock.getSymbol());
+                }
+
+                BigDecimal costReduction = averageBuyPrice.multiply(BigDecimal.valueOf(quantity));
+                totalInvested = totalInvested.subtract(costReduction);
+                totalQuantity -= quantity;
+
+                if (totalQuantity == 0) {
+                    totalInvested = BigDecimal.ZERO;
+                    averageBuyPrice = BigDecimal.ZERO;
+                }
+
+                transaction.setIsRealized(true);
+            }
         }
 
-        // Update current value and P&L
-        stock.setCurrentValue(stock.getCurrentPrice().multiply(new BigDecimal(stock.getTotalQuantity())));
-        stock.setProfitLoss(stock.getCurrentValue().subtract(stock.getTotalInvested()));
-        
-        if (stock.getTotalInvested().compareTo(BigDecimal.ZERO) > 0) {
-            stock.setProfitLossPercentage(
-                stock.getProfitLoss()
-                    .multiply(new BigDecimal(100))
-                    .divide(stock.getTotalInvested(), 2, RoundingMode.HALF_UP)
-            );
+        BigDecimal currentPrice = marketDataService.getCurrentPrice(stock.getSymbol());
+        BigDecimal currentValue = currentPrice.multiply(BigDecimal.valueOf(totalQuantity));
+        BigDecimal profitLoss = currentValue.subtract(totalInvested);
+        BigDecimal profitLossPercentage = BigDecimal.ZERO;
+
+        if (totalInvested.compareTo(BigDecimal.ZERO) > 0) {
+            profitLossPercentage = profitLoss
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(totalInvested, 2, RoundingMode.HALF_UP);
         }
 
+        stock.setTotalQuantity(totalQuantity);
+        stock.setAverageBuyPrice(averageBuyPrice.setScale(2, RoundingMode.HALF_UP));
+        stock.setTotalInvested(totalInvested.setScale(2, RoundingMode.HALF_UP));
+        stock.setCurrentPrice(currentPrice);
+        stock.setCurrentValue(currentValue.setScale(2, RoundingMode.HALF_UP));
+        stock.setProfitLoss(profitLoss.setScale(2, RoundingMode.HALF_UP));
+        stock.setProfitLossPercentage(profitLossPercentage);
+
+        transactionRepository.saveAll(transactions);
         stockRepository.save(stock);
     }
 
@@ -251,6 +286,30 @@ public class TransactionService {
         
         portfolio.setCurrentValue(currentValue);
         portfolioRepository.save(portfolio);
+    }
+
+    private void validateTransactionRequest(TransactionDTO.TransactionRequest request) {
+        if (request.getSymbol() == null || request.getSymbol().trim().isEmpty()) {
+            throw new BadRequestException("Symbol is required");
+        }
+        if (request.getTransactionType() == null) {
+            throw new BadRequestException("Transaction type is required");
+        }
+        if (request.getQuantity() == null || request.getQuantity() <= 0) {
+            throw new BadRequestException("Quantity must be greater than zero");
+        }
+        if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Price must be greater than zero");
+        }
+        if (request.getTransactionDate() == null) {
+            throw new BadRequestException("Transaction date is required");
+        }
+    }
+
+    private void ensureTransactionBelongsToPortfolio(Transaction transaction, Long portfolioId) {
+        if (!transaction.getPortfolio().getId().equals(portfolioId)) {
+            throw new ResourceNotFoundException("Transaction not found");
+        }
     }
 
     private TransactionDTO.TransactionResponse mapToResponse(Transaction transaction, Stock stock) {

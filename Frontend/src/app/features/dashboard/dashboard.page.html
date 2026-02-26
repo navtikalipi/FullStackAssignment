@@ -38,8 +38,15 @@
     <div class="spinner"></div>
   </div>
 
+  <!-- Error State -->
+  <div *ngIf="!loading && errorMessage" class="empty-state">
+    <div class="empty-icon">⚠️</div>
+    <h2 class="empty-title">Unable to Load Dashboard</h2>
+    <p class="empty-text">{{ errorMessage }}</p>
+  </div>
+
   <!-- Portfolio Summary Cards -->
-  <div *ngIf="dashboard && !loading" class="kpi-grid">
+  <div *ngIf="dashboard && !loading && !errorMessage" class="kpi-grid">
 
     <!-- Total Investment Card -->
     <div class="kpi-card">

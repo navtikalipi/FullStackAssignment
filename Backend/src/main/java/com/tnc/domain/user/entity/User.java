@@ -1,31 +1,27 @@
 package com.tnc.domain.user.entity;
 
-import com.tnc.domain.portfolio.entity.Portfolio;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.tnc.persistence.entity.BaseEntity;
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
+import javax.persistence.*;
 import java.util.List;
 
-@Entity
-@Table(name = "users", indexes = {
-    @Index(name = "idx_user_email", columnList = "email", unique = true)
-})
 @Data
 @EqualsAndHashCode(callSuper = true)
-@NoArgsConstructor
-@AllArgsConstructor
+@Entity
+@Table(name = "users")
 public class User extends BaseEntity {
 
     @Column(unique = true, nullable = false)
-    private String email;
+    private String username;
 
     @Column(nullable = false)
     private String password;
+
+    @Column(unique = true, nullable = false)
+    private String email;
 
     @Column(name = "first_name")
     private String firstName;
@@ -34,12 +30,20 @@ public class User extends BaseEntity {
     private String lastName;
 
     @Column(nullable = false)
-    private boolean enabled = true;
+    private String role;
 
-    @Column(name = "role")
-    private String role = "USER";
+    @Column(nullable = false)
+    private Boolean enabled = true;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("createdAt DESC")
-    private List<Portfolio> portfolios = new ArrayList<>();
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonBackReference
+    private List<com.tnc.domain.portfolio.entity.Portfolio> portfolios;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonBackReference
+    private List<com.tnc.domain.holdings.entity.Holding> holdings;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonBackReference
+    private List<com.tnc.domain.transaction.entity.Transaction> transactions;
 }

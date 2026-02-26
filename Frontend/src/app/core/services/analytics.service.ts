@@ -1,23 +1,16 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiHttpClient } from '../api/http-client';
-import { ENDPOINTS } from '../api/endpoints';
-import { AnalyticsData, ReportData } from '../models/analytics.model';
+import { environment } from '../../../environments/environment';
+import { ApiResponse, AssetAllocation } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
+  private apiUrl = `${environment.apiUrl}/analytics`;
 
-  constructor(private api: ApiHttpClient) {}
+  constructor(private http: HttpClient) {}
 
-  getAnalytics(portfolioId: number, period: string = 'ALL'): Observable<AnalyticsData> {
-    return this.api.get<AnalyticsData>(`${ENDPOINTS.ANALYTICS(portfolioId)}?period=${period}`);
-  }
-
-  getReport(portfolioId: number): Observable<ReportData> {
-    return this.api.get<ReportData>(ENDPOINTS.REPORTS(portfolioId));
-  }
-
-  exportReport(portfolioId: number, format: 'PDF' | 'EXCEL'): Observable<Blob> {
-    return this.api.getBlob(`${ENDPOINTS.REPORTS(portfolioId)}/export?format=${format}`);
+  getAssetAllocation(): Observable<ApiResponse<AssetAllocation>> {
+    return this.http.get<ApiResponse<AssetAllocation>>(`${this.apiUrl}/allocation`);
   }
 }

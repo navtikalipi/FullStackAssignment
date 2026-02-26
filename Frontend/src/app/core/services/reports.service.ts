@@ -1,26 +1,16 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiHttpClient } from '../api/http-client';
-import { ENDPOINTS } from '../api/endpoints';
+import { environment } from '../../../environments/environment';
+import { ApiResponse, GenerateReportRequest, ReportResponse } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ReportsService {
+  private apiUrl = `${environment.apiUrl}/reports`;
 
-  constructor(private api: ApiHttpClient) {}
+  constructor(private http: HttpClient) {}
 
-  generateReport(format: string): Observable<Blob> {
-    return this.api.post(`${ENDPOINTS.REPORTS}/generate`, { format }, { responseType: 'blob' });
-  }
-
-  getSummary(portfolioId: number): Observable<any> {
-    return this.api.get<any>(`${ENDPOINTS.REPORTS(portfolioId)}/summary`);
-  }
-
-  exportCSV(portfolioId: number): Observable<Blob> {
-    return this.api.getBlob(`${ENDPOINTS.REPORTS(portfolioId)}/export`);
-  }
-
-  exportPDF(portfolioId: number): Observable<Blob> {
-    return this.api.getBlob(`${ENDPOINTS.REPORTS(portfolioId)}/pdf`);
+  generateReport(request: GenerateReportRequest): Observable<ApiResponse<ReportResponse>> {
+    return this.http.post<ApiResponse<ReportResponse>>(`${this.apiUrl}/generate`, request);
   }
 }

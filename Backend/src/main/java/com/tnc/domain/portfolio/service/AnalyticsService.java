@@ -15,7 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,62 +30,88 @@ public class AnalyticsService {
     private final PortfolioRepository portfolioRepository;
     private final StockRepository stockRepository;
     private final TransactionRepository transactionRepository;
-    private final MarketDataService marketDataService;
-
     @Transactional(readOnly = true)
-    public AnalyticsDTO.DashboardSummary getDashboardSummary(Long userId, Long portfolioId) {
+    public AnalyticsDTO.DashboardData getDashboardSummary(Long userId, Long portfolioId) {
         
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found"));
 
         List<Stock> stocks = stockRepository.findByPortfolioId(portfolioId);
+        List<Stock> activeHoldings = stocks.stream()
+                .filter(stock -> stock.getTotalQuantity() != null && stock.getTotalQuantity() > 0)
+                .collect(Collectors.toList());
+        List<Transaction> transactions = transactionRepository.findByPortfolioId(portfolioId);
 
         BigDecimal totalInvested = portfolio.getTotalInvested();
-        BigDecimal currentValue = stocks.stream()
-                .map(Stock::getCurrentValue)
+        BigDecimal currentValue = activeHoldings.stream()
+                .map(stock -> safeValue(stock.getCurrentPrice()).multiply(BigDecimal.valueOf(stock.getTotalQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        BigDecimal totalProfitLoss = currentValue.subtract(totalInvested);
-        BigDecimal profitLossPercentage = BigDecimal.ZERO;
+        BigDecimal totalGainLoss = currentValue.subtract(totalInvested);
+        BigDecimal totalGainLossPercent = BigDecimal.ZERO;
         
         if (totalInvested.compareTo(BigDecimal.ZERO) > 0) {
-            profitLossPercentage = totalProfitLoss
+            totalGainLossPercent = totalGainLoss
                     .multiply(new BigDecimal(100))
                     .divide(totalInvested, 2, RoundingMode.HALF_UP);
         }
 
-        BigDecimal realizedGain = calculateRealizedGain(portfolioId);
-        BigDecimal unrealizedGain = totalProfitLoss.subtract(realizedGain);
-
-        List<AnalyticsDTO.StockPerformance> topGainers = stocks.stream()
-                .filter(s -> s.getProfitLossPercentage().compareTo(BigDecimal.ZERO) > 0)
-                .sorted(Comparator.comparing(Stock::getProfitLossPercentage).reversed())
-                .limit(5)
-                .map(this::toStockPerformance)
+        List<AnalyticsDTO.HoldingSummary> holdings = activeHoldings.stream()
+                .map(this::toHoldingSummary)
+                .sorted(Comparator.comparing(AnalyticsDTO.HoldingSummary::getSymbol))
                 .collect(Collectors.toList());
 
-        List<AnalyticsDTO.StockPerformance> topLosers = stocks.stream()
-                .filter(s -> s.getProfitLossPercentage().compareTo(BigDecimal.ZERO) < 0)
-                .sorted(Comparator.comparing(Stock::getProfitLossPercentage))
+        int profitableStocks = (int) holdings.stream()
+                .filter(holding -> holding.getGainLoss().compareTo(BigDecimal.ZERO) > 0)
+                .count();
+        int lossStocks = (int) holdings.stream()
+                .filter(holding -> holding.getGainLoss().compareTo(BigDecimal.ZERO) < 0)
+                .count();
+
+        List<AnalyticsDTO.TopMover> topGainers = activeHoldings.stream()
+                .map(this::toTopMover)
+                .filter(mover -> mover.getChangePercent().compareTo(BigDecimal.ZERO) > 0)
+                .sorted(Comparator.comparing(AnalyticsDTO.TopMover::getChangePercent).reversed())
                 .limit(5)
-                .map(this::toStockPerformance)
                 .collect(Collectors.toList());
 
-        Map<String, BigDecimal> sectorAllocation = calculateSectorAllocation(stocks);
+        List<AnalyticsDTO.TopMover> topLosers = activeHoldings.stream()
+                .map(this::toTopMover)
+                .filter(mover -> mover.getChangePercent().compareTo(BigDecimal.ZERO) < 0)
+                .sorted(Comparator.comparing(AnalyticsDTO.TopMover::getChangePercent))
+                .limit(5)
+                .collect(Collectors.toList());
 
-        return AnalyticsDTO.DashboardSummary.builder()
+        List<AnalyticsDTO.TransactionSummary> recentTransactions = transactions.stream()
+                .sorted(Comparator
+                        .comparing(Transaction::getTransactionDate, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Transaction::getId, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(10)
+                .map(this::toTransactionSummary)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        String status = "NEUTRAL";
+        if (totalGainLoss.compareTo(BigDecimal.ZERO) > 0) {
+            status = "PROFIT";
+        } else if (totalGainLoss.compareTo(BigDecimal.ZERO) < 0) {
+            status = "LOSS";
+        }
+
+        return AnalyticsDTO.DashboardData.builder()
                 .portfolioId(portfolioId)
                 .portfolioName(portfolio.getPortfolioName())
                 .totalInvested(totalInvested)
                 .currentValue(currentValue)
-                .totalProfitLoss(totalProfitLoss)
-                .profitLossPercentage(profitLossPercentage)
-                .realizedGain(realizedGain)
-                .unrealizedGain(unrealizedGain)
-                .stockCount(stocks.size())
+                .totalGainLoss(totalGainLoss)
+                .totalGainLossPercent(totalGainLossPercent)
+                .totalStocks(holdings.size())
+                .profitableStocks(profitableStocks)
+                .lossStocks(lossStocks)
+                .status(status)
                 .topGainers(topGainers)
                 .topLosers(topLosers)
-                .sectorAllocation(sectorAllocation)
+                .recentTransactions(recentTransactions)
+                .holdings(holdings)
                 .build();
     }
 
@@ -183,7 +214,47 @@ public class AnalyticsService {
     }
 
     private BigDecimal calculateRealizedGain(Long portfolioId) {
-        return BigDecimal.ZERO;
+                List<Transaction> transactions = transactionRepository.findByPortfolioId(portfolioId).stream()
+                                .sorted(Comparator
+                                                .comparing(Transaction::getTransactionDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                                                .thenComparing(Transaction::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                                .collect(Collectors.toList());
+
+                Map<Long, Integer> quantityByStock = new HashMap<>();
+                Map<Long, BigDecimal> averageCostByStock = new HashMap<>();
+                BigDecimal realizedGain = BigDecimal.ZERO;
+
+                for (Transaction transaction : transactions) {
+                        Long stockId = transaction.getStock().getId();
+                        Integer existingQuantity = quantityByStock.getOrDefault(stockId, 0);
+                        BigDecimal existingAverageCost = averageCostByStock.getOrDefault(stockId, BigDecimal.ZERO);
+                        BigDecimal unitPrice = safeValue(transaction.getPrice());
+
+                        if (transaction.getTransactionType() == Transaction.TransactionType.BUY) {
+                                int newQuantity = existingQuantity + transaction.getQuantity();
+                                BigDecimal totalCost = existingAverageCost.multiply(BigDecimal.valueOf(existingQuantity))
+                                                .add(unitPrice.multiply(BigDecimal.valueOf(transaction.getQuantity())));
+                                BigDecimal newAverageCost = newQuantity > 0
+                                                ? totalCost.divide(BigDecimal.valueOf(newQuantity), 4, RoundingMode.HALF_UP)
+                                                : BigDecimal.ZERO;
+                                quantityByStock.put(stockId, newQuantity);
+                                averageCostByStock.put(stockId, newAverageCost);
+                        } else {
+                                int sellQuantity = transaction.getQuantity();
+                                if (sellQuantity > existingQuantity) {
+                                        continue;
+                                }
+                                BigDecimal gainPerShare = unitPrice.subtract(existingAverageCost);
+                                realizedGain = realizedGain.add(gainPerShare.multiply(BigDecimal.valueOf(sellQuantity)));
+                                int newQuantity = existingQuantity - sellQuantity;
+                                quantityByStock.put(stockId, newQuantity);
+                                if (newQuantity == 0) {
+                                        averageCostByStock.put(stockId, BigDecimal.ZERO);
+                                }
+                        }
+                }
+
+                return realizedGain.setScale(2, RoundingMode.HALF_UP);
     }
 
     private Map<String, BigDecimal> calculateSectorAllocation(List<Stock> stocks) {
@@ -203,6 +274,68 @@ public class AnalyticsService {
 
         return sectorAllocation;
     }
+
+        private AnalyticsDTO.HoldingSummary toHoldingSummary(Stock stock) {
+                BigDecimal currentPrice = safeValue(stock.getCurrentPrice());
+                BigDecimal investmentAmount = safeValue(stock.getTotalInvested());
+                BigDecimal currentValue = currentPrice.multiply(BigDecimal.valueOf(stock.getTotalQuantity()));
+                BigDecimal gainLoss = currentValue.subtract(investmentAmount);
+                BigDecimal gainLossPercent = BigDecimal.ZERO;
+
+                if (investmentAmount.compareTo(BigDecimal.ZERO) > 0) {
+                        gainLossPercent = gainLoss.multiply(BigDecimal.valueOf(100))
+                                        .divide(investmentAmount, 2, RoundingMode.HALF_UP);
+                }
+
+                String status = "NEUTRAL";
+                if (gainLoss.compareTo(BigDecimal.ZERO) > 0) {
+                        status = "PROFIT";
+                } else if (gainLoss.compareTo(BigDecimal.ZERO) < 0) {
+                        status = "LOSS";
+                }
+
+                return AnalyticsDTO.HoldingSummary.builder()
+                                .stockId(stock.getId())
+                                .symbol(stock.getSymbol())
+                                .companyName(stock.getCompanyName())
+                                .quantity(stock.getTotalQuantity())
+                                .averageBuyPrice(safeValue(stock.getAverageBuyPrice()))
+                                .currentPrice(currentPrice)
+                                .investmentAmount(investmentAmount)
+                                .currentValue(currentValue)
+                                .gainLoss(gainLoss)
+                                .gainLossPercent(gainLossPercent)
+                                .status(status)
+                                .build();
+        }
+
+        private AnalyticsDTO.TopMover toTopMover(Stock stock) {
+                BigDecimal change = safeValue(stock.getProfitLoss());
+                BigDecimal changePercent = safeValue(stock.getProfitLossPercentage());
+                return AnalyticsDTO.TopMover.builder()
+                                .symbol(stock.getSymbol())
+                                .companyName(stock.getCompanyName())
+                                .currentPrice(safeValue(stock.getCurrentPrice()))
+                                .change(change)
+                                .changePercent(changePercent)
+                                .build();
+        }
+
+        private AnalyticsDTO.TransactionSummary toTransactionSummary(Transaction transaction) {
+                return AnalyticsDTO.TransactionSummary.builder()
+                                .id(transaction.getId())
+                                .symbol(transaction.getStock().getSymbol())
+                                .transactionType(transaction.getTransactionType().name())
+                                .quantity(transaction.getQuantity())
+                                .price(safeValue(transaction.getPrice()))
+                                .totalAmount(safeValue(transaction.getTotalAmount()))
+                                .transactionDate(transaction.getTransactionDate())
+                                .build();
+        }
+
+        private BigDecimal safeValue(BigDecimal value) {
+                return value == null ? BigDecimal.ZERO : value;
+        }
 
     private AnalyticsDTO.StockPerformance toStockPerformance(Stock stock) {
         return AnalyticsDTO.StockPerformance.builder()

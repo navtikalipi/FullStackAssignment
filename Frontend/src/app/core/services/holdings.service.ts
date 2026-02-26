@@ -1,35 +1,24 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiHttpClient } from '../api/http-client';
-import { ENDPOINTS } from '../api/endpoints';
-import { Stock, StockRequest, StockSummary } from '../models/stock.model';
+import { environment } from '../../../environments/environment';
+import { ApiResponse, Holding, CreateHoldingRequest } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class HoldingsService {
+  private apiUrl = `${environment.apiUrl}/holdings`;
 
-  constructor(private api: ApiHttpClient) {}
+  constructor(private http: HttpClient) {}
 
-  getByPortfolio(portfolioId: number): Observable<Stock[]> {
-    return this.api.get<Stock[]>(ENDPOINTS.STOCKS(portfolioId));
+  getHoldings(): Observable<ApiResponse<Holding[]>> {
+    return this.http.get<ApiResponse<Holding[]>>(this.apiUrl);
   }
 
-  getById(portfolioId: number, id: number): Observable<Stock> {
-    return this.api.get<Stock>(ENDPOINTS.STOCK(portfolioId, id));
+  getHoldingById(id: number): Observable<ApiResponse<Holding>> {
+    return this.http.get<ApiResponse<Holding>>(`${this.apiUrl}/${id}`);
   }
 
-  create(portfolioId: number, stock: StockRequest): Observable<Stock> {
-    return this.api.post<Stock>(ENDPOINTS.STOCKS(portfolioId), stock);
-  }
-
-  update(portfolioId: number, id: number, stock: StockRequest): Observable<Stock> {
-    return this.api.put<Stock>(ENDPOINTS.STOCK(portfolioId, id), stock);
-  }
-
-  delete(portfolioId: number, id: number): Observable<void> {
-    return this.api.delete<void>(ENDPOINTS.STOCK(portfolioId, id));
-  }
-
-  getSummaries(portfolioId: number): Observable<StockSummary[]> {
-    return this.api.get<StockSummary[]>(`${ENDPOINTS.STOCKS(portfolioId)}/summaries`);
+  createHolding(holding: CreateHoldingRequest): Observable<ApiResponse<Holding>> {
+    return this.http.post<ApiResponse<Holding>>(this.apiUrl, holding);
   }
 }

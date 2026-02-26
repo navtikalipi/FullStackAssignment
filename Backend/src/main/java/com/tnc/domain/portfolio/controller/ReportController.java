@@ -1,13 +1,13 @@
 package com.tnc.domain.portfolio.controller;
 
 import com.tnc.common.api.ApiResponse;
+import com.tnc.common.security.CurrentUserService;
 import com.tnc.domain.portfolio.dto.AnalyticsDTO;
 import com.tnc.domain.portfolio.service.AnalyticsService;
-import com.tnc.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -19,36 +19,40 @@ import java.util.List;
 public class ReportController {
 
     private final AnalyticsService analyticsService;
+        private final CurrentUserService currentUserService;
 
     @GetMapping("/profit-loss")
     public ResponseEntity<ApiResponse<AnalyticsDTO.ProfitLossReport>> getProfitLossReport(
-            @AuthenticationPrincipal User user,
+                        Authentication authentication,
             @PathVariable Long portfolioId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+                Long userId = currentUserService.getCurrentUserId(authentication);
         
         AnalyticsDTO.ProfitLossReport report = analyticsService.getProfitLossReport(
-                user.getId(), portfolioId, startDate, endDate);
+                                userId, portfolioId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(report));
     }
 
     @GetMapping("/performance")
     public ResponseEntity<ApiResponse<List<AnalyticsDTO.StockPerformance>>> getPerformanceReport(
-            @AuthenticationPrincipal User user,
+                        Authentication authentication,
             @PathVariable Long portfolioId) {
+                Long userId = currentUserService.getCurrentUserId(authentication);
         
         List<AnalyticsDTO.StockPerformance> performance = analyticsService.getStockPerformance(
-                user.getId(), portfolioId);
+                                userId, portfolioId);
         return ResponseEntity.ok(ApiResponse.success(performance));
     }
 
     @GetMapping("/sector")
     public ResponseEntity<ApiResponse<AnalyticsDTO.SectorAnalysis>> getSectorReport(
-            @AuthenticationPrincipal User user,
+                        Authentication authentication,
             @PathVariable Long portfolioId) {
+                Long userId = currentUserService.getCurrentUserId(authentication);
         
         AnalyticsDTO.SectorAnalysis analysis = analyticsService.getSectorAnalysis(
-                user.getId(), portfolioId);
+                                userId, portfolioId);
         return ResponseEntity.ok(ApiResponse.success(analysis));
     }
 }

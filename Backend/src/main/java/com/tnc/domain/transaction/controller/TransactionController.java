@@ -1,15 +1,13 @@
 package com.tnc.domain.transaction.controller;
 
-import com.tnc.common.api.ApiResponse;
+import com.tnc.common.security.CurrentUserService;
 import com.tnc.domain.transaction.dto.TransactionDTO;
 import com.tnc.domain.transaction.service.TransactionService;
-import com.tnc.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,71 +18,77 @@ import java.util.List;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final CurrentUserService currentUserService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<TransactionDTO.TransactionResponse>> createTransaction(
-            @AuthenticationPrincipal User user,
+        public ResponseEntity<TransactionDTO.TransactionResponse> createTransaction(
+            Authentication authentication,
             @PathVariable Long portfolioId,
             @RequestBody TransactionDTO.TransactionRequest request) {
+        Long userId = currentUserService.getCurrentUserId(authentication);
         
         TransactionDTO.TransactionResponse transaction = transactionService.createTransaction(
-                user.getId(), portfolioId, request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(transaction, "Transaction created successfully"));
+                userId, portfolioId, request);
+                return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<TransactionDTO.TransactionResponse>>> getTransactions(
-            @AuthenticationPrincipal User user,
+        public ResponseEntity<List<TransactionDTO.TransactionResponse>> getTransactions(
+            Authentication authentication,
             @PathVariable Long portfolioId,
             Pageable pageable) {
+        Long userId = currentUserService.getCurrentUserId(authentication);
         
-        Page<TransactionDTO.TransactionResponse> transactions = transactionService.getPortfolioTransactions(
-                user.getId(), portfolioId, pageable);
-        return ResponseEntity.ok(ApiResponse.success(transactions));
+                List<TransactionDTO.TransactionResponse> transactions = transactionService.getPortfolioTransactions(
+                userId, portfolioId, pageable);
+                return ResponseEntity.ok(transactions);
     }
 
     @GetMapping("/{transactionId}")
-    public ResponseEntity<ApiResponse<TransactionDTO.TransactionResponse>> getTransaction(
-            @AuthenticationPrincipal User user,
+        public ResponseEntity<TransactionDTO.TransactionResponse> getTransaction(
+            Authentication authentication,
             @PathVariable Long portfolioId,
             @PathVariable Long transactionId) {
+        Long userId = currentUserService.getCurrentUserId(authentication);
         
         TransactionDTO.TransactionResponse transaction = transactionService.getTransaction(
-                user.getId(), portfolioId, transactionId);
-        return ResponseEntity.ok(ApiResponse.success(transaction));
+                userId, portfolioId, transactionId);
+                return ResponseEntity.ok(transaction);
     }
 
     @GetMapping("/stock/{stockId}")
-    public ResponseEntity<ApiResponse<List<TransactionDTO.TransactionResponse>>> getStockTransactions(
-            @AuthenticationPrincipal User user,
+        public ResponseEntity<List<TransactionDTO.TransactionResponse>> getStockTransactions(
+            Authentication authentication,
             @PathVariable Long portfolioId,
             @PathVariable Long stockId) {
+        Long userId = currentUserService.getCurrentUserId(authentication);
         
         List<TransactionDTO.TransactionResponse> transactions = transactionService.getStockTransactions(
-                user.getId(), portfolioId, stockId);
-        return ResponseEntity.ok(ApiResponse.success(transactions));
+                userId, portfolioId, stockId);
+                return ResponseEntity.ok(transactions);
     }
 
     @PutMapping("/{transactionId}")
-    public ResponseEntity<ApiResponse<TransactionDTO.TransactionResponse>> updateTransaction(
-            @AuthenticationPrincipal User user,
+        public ResponseEntity<TransactionDTO.TransactionResponse> updateTransaction(
+            Authentication authentication,
             @PathVariable Long portfolioId,
             @PathVariable Long transactionId,
             @RequestBody TransactionDTO.TransactionUpdateRequest request) {
+        Long userId = currentUserService.getCurrentUserId(authentication);
         
         TransactionDTO.TransactionResponse transaction = transactionService.updateTransaction(
-                user.getId(), portfolioId, transactionId, request);
-        return ResponseEntity.ok(ApiResponse.success(transaction, "Transaction updated successfully"));
+                userId, portfolioId, transactionId, request);
+                return ResponseEntity.ok(transaction);
     }
 
     @DeleteMapping("/{transactionId}")
-    public ResponseEntity<ApiResponse<Void>> deleteTransaction(
-            @AuthenticationPrincipal User user,
+        public ResponseEntity<Void> deleteTransaction(
+            Authentication authentication,
             @PathVariable Long portfolioId,
             @PathVariable Long transactionId) {
+        Long userId = currentUserService.getCurrentUserId(authentication);
         
-        transactionService.deleteTransaction(user.getId(), portfolioId, transactionId);
-        return ResponseEntity.ok(ApiResponse.success(null, "Transaction deleted successfully"));
+        transactionService.deleteTransaction(userId, portfolioId, transactionId);
+                return ResponseEntity.noContent().build();
     }
 }

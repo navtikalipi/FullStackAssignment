@@ -16,7 +16,7 @@ import java.util.List;
 @Entity
 @Table(name = "stocks", indexes = {
     @Index(name = "idx_stock_symbol", columnList = "symbol"),
-    @Index(name = "idx_stock_portfolio", columnList = "portfolio_id")
+    @Index(name = "idx_stocks_portfolio_ref", columnList = "portfolio_id")
 })
 @Data
 @EqualsAndHashCode(callSuper = true)

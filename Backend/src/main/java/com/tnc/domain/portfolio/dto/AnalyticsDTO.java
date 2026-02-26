@@ -16,19 +16,65 @@ public class AnalyticsDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class DashboardSummary {
+    public static class DashboardData {
         private Long portfolioId;
         private String portfolioName;
         private BigDecimal totalInvested;
         private BigDecimal currentValue;
-        private BigDecimal totalProfitLoss;
-        private BigDecimal profitLossPercentage;
-        private BigDecimal realizedGain;
-        private BigDecimal unrealizedGain;
-        private Integer stockCount;
-        private List<StockPerformance> topGainers;
-        private List<StockPerformance> topLosers;
-        private Map<String, BigDecimal> sectorAllocation;
+        private BigDecimal totalGainLoss;
+        private BigDecimal totalGainLossPercent;
+        private Integer totalStocks;
+        private Integer profitableStocks;
+        private Integer lossStocks;
+        private String status;
+        private List<TopMover> topGainers;
+        private List<TopMover> topLosers;
+        private List<TransactionSummary> recentTransactions;
+        private List<HoldingSummary> holdings;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TopMover {
+        private String symbol;
+        private String companyName;
+        private BigDecimal currentPrice;
+        private BigDecimal change;
+        private BigDecimal changePercent;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class HoldingSummary {
+        private Long stockId;
+        private String symbol;
+        private String companyName;
+        private Integer quantity;
+        private BigDecimal averageBuyPrice;
+        private BigDecimal currentPrice;
+        private BigDecimal investmentAmount;
+        private BigDecimal currentValue;
+        private BigDecimal gainLoss;
+        private BigDecimal gainLossPercent;
+        private String status;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TransactionSummary {
+        private Long id;
+        private String symbol;
+        private String transactionType;
+        private Integer quantity;
+        private BigDecimal price;
+        private BigDecimal totalAmount;
+        private LocalDate transactionDate;
     }
 
     @Data
