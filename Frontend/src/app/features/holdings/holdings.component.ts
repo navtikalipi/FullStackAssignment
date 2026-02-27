@@ -42,16 +42,16 @@ import { interval, Subscription } from 'rxjs';
           <div class="summary-strip">
             <div class="summary-item">
               <span class="label">Total Invested</span>
-              <span class="value">₹{{ totalInvested | inr }}</span>
+              <span class="value">{{ totalInvested | inr }}</span>
             </div>
             <div class="summary-item">
               <span class="label">Current Value</span>
-              <span class="value">₹{{ totalCurrentValue | inr }}</span>
+              <span class="value">{{ totalCurrentValue | inr }}</span>
             </div>
             <div class="summary-item">
               <span class="label">Total P&L</span>
               <span class="value" [class.positive]="totalPnL >= 0" [class.negative]="totalPnL < 0">
-                {{ totalPnL >= 0 ? '+' : '' }}₹{{ totalPnL | inr }}
+                {{ totalPnL >= 0 ? '+' : '' }}{{ totalPnL | inr }}
               </span>
             </div>
           </div>
@@ -74,12 +74,12 @@ import { interval, Subscription } from 'rxjs';
                 <tr>
                   <td><span class="symbol-tag">{{ holding.symbol }}</span></td>
                   <td>{{ holding.quantity }}</td>
-                  <td>₹{{ holding.purchasePrice | inr }}</td>
-                  <td class="live-price">₹{{ holding.currentPrice | inr }}</td>
-                  <td>₹{{ holding.totalCost | inr }}</td>
-                  <td>₹{{ holding.currentValue | inr }}</td>
+                  <td>{{ holding.purchasePrice | inr }}</td>
+                  <td class="live-price">{{ holding.currentPrice | inr }}</td>
+                  <td>{{ holding.totalCost | inr }}</td>
+                  <td>{{ holding.currentValue | inr }}</td>
                   <td [class.positive]="holding.pnL >= 0" [class.negative]="holding.pnL < 0">
-                    {{ holding.pnL >= 0 ? '+' : '' }}₹{{ holding.pnL | inr }}
+                    {{ holding.pnL >= 0 ? '+' : '' }}{{ holding.pnL | inr }}
                   </td>
                   <td>
                     <span class="pnl-badge" 

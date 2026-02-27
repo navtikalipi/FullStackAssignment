@@ -1,12 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, interval, Subscription } from 'rxjs';
 import { InrPipe } from '../../shared/pipes/inr.pipe';
 import { PortfolioService } from '../../core/services/portfolio.service';
 import { ReportsService } from '../../core/services/reports.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { PortfolioSummary, AllocationItem } from '../../core/models';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-reports',
@@ -15,8 +16,19 @@ import { PortfolioSummary, AllocationItem } from '../../core/models';
   template: `
     <div class="reports-page">
       <div class="page-header">
-        <h2>Reports & Insights</h2>
-        <p class="subtitle">Generate portfolio reports for tracking and tax purposes</p>
+        <div class="header-left">
+          <h2>Reports & Insights</h2>
+          <p class="subtitle">Generate portfolio reports for tracking and tax purposes</p>
+        </div>
+        <div class="header-right">
+          <div class="live-indicator">
+            <span class="live-dot"></span> Live
+          </div>
+          <button class="refresh-btn" (click)="refreshData()" [disabled]="loading">
+            <span class="refresh-icon" [class.spinning]="loading">🔄</span>
+            Refresh
+          </button>
+        </div>
       </div>
 
       @if (loading) {
@@ -136,10 +148,44 @@ import { PortfolioSummary, AllocationItem } from '../../core/models';
           @if (reportSuccess) {
             <div class="success-msg">
               ✅ {{ reportSuccess }}
+              <button class="btn-download" (click)="downloadLastReport()">
+                📥 Download
+              </button>
             </div>
           }
           @if (reportError) {
             <div class="error-msg">{{ reportError }}</div>
+          }
+        </div>
+
+        <!-- Recent Reports -->
+        <div class="section-card">
+          <h3>📁 Recent Reports</h3>
+          <p class="section-desc">Download your previously generated reports.</p>
+          
+          <button class="btn-refresh-reports" (click)="loadReportsList()" [disabled]="loadingReports">
+            🔄 Refresh List
+          </button>
+
+          @if (reportsList.length > 0) {
+            <div class="reports-list">
+              @for (report of reportsList; track report.reportId) {
+                <div class="report-item">
+                  <div class="report-info">
+                    <span class="report-icon">📄</span>
+                    <div class="report-details">
+                      <span class="report-name">{{ report.fileName }}</span>
+                      <span class="report-date">{{ report.createdAt | date:'dd MMM yyyy, hh:mm a' }}</span>
+                    </div>
+                  </div>
+                  <button class="btn-download-small" (click)="downloadReportByFileName(report.fileName, report.reportId)">
+                    ⬇ Download
+                  </button>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="no-data">No reports generated yet</p>
           }
         </div>
       }
@@ -147,9 +193,56 @@ import { PortfolioSummary, AllocationItem } from '../../core/models';
   `,
   styles: [`
     .reports-page { max-width: 900px; margin: 0 auto; }
-    .page-header { margin-bottom: 24px; }
-    .page-header h2 { font-size: 24px; color: #1a1a2e; margin: 0; }
-    .subtitle { color: #666; font-size: 14px; margin-top: 4px; }
+    .page-header { 
+      margin-bottom: 24px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-start; 
+    }
+    .header-left h2 { font-size: 24px; color: #1a1a2e; margin: 0; }
+    .header-left .subtitle { color: #666; font-size: 14px; margin-top: 4px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    
+    .live-indicator { 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+      color: #00c853; 
+      font-weight: 600; 
+      font-size: 12px; 
+    }
+    .live-dot { 
+      width: 8px; 
+      height: 8px; 
+      background: #00c853; 
+      border-radius: 50%; 
+      animation: pulse 1.5s infinite; 
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover:not(:disabled) {
+      background: #f7f8fa;
+      border-color: #3a7bd5;
+      color: #3a7bd5;
+    }
+    .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .refresh-icon { font-size: 14px; display: inline-block; }
+    .refresh-icon.spinning { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-state {
       display: flex; flex-direction: column; align-items: center;
@@ -225,32 +318,68 @@ import { PortfolioSummary, AllocationItem } from '../../core/models';
     .success-msg {
       background: #f0fff4; color: #38a169; padding: 12px 16px; border-radius: 8px;
       font-size: 13px; border: 1px solid #c6f6d5; margin-top: 16px;
+      display: flex; align-items: center; gap: 12px;
     }
+    .btn-download {
+      background: #38a169; color: #fff; border: none; padding: 6px 12px;
+      border-radius: 6px; font-size: 12px; cursor: pointer; margin-left: auto;
+    }
+    .btn-download:hover { background: #2f855a; }
     .error-msg {
       background: #fff5f5; color: #e53e3e; padding: 12px 16px; border-radius: 8px;
       font-size: 13px; border: 1px solid #fed7d7; margin-top: 16px;
     }
     .no-data { text-align: center; color: #aaa; padding: 20px 0; }
 
+    .btn-refresh-reports {
+      background: #f7f8fa; border: 1px solid #e8ecf0; padding: 8px 16px;
+      border-radius: 8px; font-size: 13px; cursor: pointer; margin-bottom: 16px;
+    }
+    .btn-refresh-reports:hover { background: #e8ecf0; }
+    .btn-refresh-reports:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .reports-list { display: flex; flex-direction: column; gap: 12px; }
+    .report-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; background: #f7f8fa; border-radius: 10px;
+    }
+    .report-info { display: flex; align-items: center; gap: 12px; }
+    .report-icon { font-size: 24px; }
+    .report-details { display: flex; flex-direction: column; }
+    .report-name { font-size: 13px; font-weight: 600; color: #333; }
+    .report-date { font-size: 11px; color: #888; }
+    .btn-download-small {
+      background: #3a7bd5; color: #fff; border: none; padding: 6px 14px;
+      border-radius: 6px; font-size: 12px; cursor: pointer;
+    }
+    .btn-download-small:hover { background: #2d6cc4; }
+
     @media (max-width: 768px) {
       .form-row { grid-template-columns: 1fr; }
     }
   `]
 })
-export class ReportsComponent implements OnInit {
+export class ReportsComponent implements OnInit, OnDestroy {
   loading = true;
+  loadingReports = false;
   summary: PortfolioSummary | null = null;
   allocationData: { [key: string]: AllocationItem } = {};
   allocationKeys: string[] = [];
   generating = false;
   reportSuccess = '';
   reportError = '';
+  reportsList: any[] = [];
+  lastReportId = '';
+  lastReportFileName = '';
 
   reportRequest = {
     type: 'performance',
     period: 'monthly',
     format: 'pdf'
   };
+
+  private refreshSubscription?: Subscription;
+  private readonly REFRESH_INTERVAL = 1000; // 1 second
 
   private allocColors: { [key: string]: string } = {
     stocks: '#3a7bd5', bonds: '#00c853', cash: '#ff9800',
@@ -260,10 +389,32 @@ export class ReportsComponent implements OnInit {
   constructor(
     private portfolioService: PortfolioService,
     private analyticsService: AnalyticsService,
-    private reportsService: ReportsService
+    private reportsService: ReportsService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
+    // Check if user is logged in
+    if (!this.authService.getToken()) {
+      this.reportError = 'Please log in to access reports.';
+      this.loading = false;
+      return;
+    }
+    
+    this.loadData();
+    this.loadReportsList();
+    
+    // Auto-refresh every 1 second for live data
+    this.refreshSubscription = interval(this.REFRESH_INTERVAL).subscribe(() => {
+      this.loadData();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.refreshSubscription?.unsubscribe();
+  }
+
+  loadData(): void {
     forkJoin({
       summary: this.portfolioService.getSummary(),
       allocation: this.analyticsService.getAssetAllocation(),
@@ -274,8 +425,32 @@ export class ReportsComponent implements OnInit {
         this.allocationKeys = Object.keys(this.allocationData);
         this.loading = false;
       },
-      error: () => { this.loading = false; }
+      error: (err) => { 
+        this.loading = false;
+        if (err.status === 401) {
+          this.reportError = 'Session expired. Please log in again.';
+        }
+      }
     });
+  }
+
+  loadReportsList(): void {
+    this.loadingReports = true;
+    this.reportsService.listReports().subscribe({
+      next: (res) => {
+        this.reportsList = res.data || [];
+        this.loadingReports = false;
+      },
+      error: (err) => {
+        this.loadingReports = false;
+        console.error('Error loading reports list:', err);
+      }
+    });
+  }
+
+  refreshData(): void {
+    this.loading = true;
+    this.loadData();
   }
 
   getAllocColor(key: string): string {
@@ -289,11 +464,69 @@ export class ReportsComponent implements OnInit {
     this.reportsService.generateReport(this.reportRequest).subscribe({
       next: (res) => {
         this.generating = false;
-        this.reportSuccess = `Report generated successfully! Report ID: ${res.data.reportId}. Status: ${res.data.status}`;
+        this.lastReportId = res.data.reportId;
+        this.lastReportFileName = res.data.fileName || '';
+        const fileName = res.data.fileName || '';
+        this.reportSuccess = `Report generated successfully! Report ID: ${res.data.reportId}. Format: ${fileName.endsWith('.xlsx') ? 'Excel' : 'PDF'}`;
+        this.loadReportsList();
       },
       error: (err) => {
         this.generating = false;
         this.reportError = err.error?.message || 'Failed to generate report. Please try again.';
+      }
+    });
+  }
+
+  downloadLastReport(): void {
+    if (this.lastReportId) {
+      this.downloadReport(this.lastReportId);
+    }
+  }
+
+  downloadReport(reportId: string): void {
+    this.reportError = '';
+    console.log('Downloading report:', reportId);
+    
+    this.reportsService.downloadReport(reportId).subscribe({
+      next: (blob) => {
+        console.log('Download successful, blob size:', blob.size);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        // Determine extension from content type
+        const contentType = blob.type;
+        const extension = contentType.includes('spreadsheet') || contentType.includes('excel') ? 'xlsx' : 'pdf';
+        link.download = `${reportId}.${extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Download error:', err);
+        this.reportError = 'Failed to download report: ' + (err.message || 'Please try again. Make sure you are logged in.');
+      }
+    });
+  }
+
+  downloadReportByFileName(fileName: string, reportId: string): void {
+    this.reportError = '';
+    console.log('Downloading report by filename:', fileName, reportId);
+    
+    this.reportsService.downloadReport(reportId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Download error:', err);
+        this.reportError = 'Failed to download report: ' + (err.message || 'Please try again. Make sure you are logged in.');
       }
     });
   }

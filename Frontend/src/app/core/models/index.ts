@@ -208,6 +208,8 @@ export interface GenerateReportRequest {
 
 export interface ReportResponse {
   reportId: string;
+  fileName?: string;
+  filePath?: string;
   status: string;
   createdAt: string;
 }
