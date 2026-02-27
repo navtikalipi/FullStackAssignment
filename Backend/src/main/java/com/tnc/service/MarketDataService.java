@@ -1,14 +1,24 @@
 package com.tnc.service;
 
 import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class MarketDataService {
-    
+
+    private static final String MARKET_DATA_BASE_URL = "http://localhost:7666";
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+
+    // Fallback local cache (used if mock server isn't reachable)
     private final Map<String, StockData> stockDatabase = new ConcurrentHashMap<>();
-    
+
     public MarketDataService() {
         // Initialize with Indian NSE/BSE stock data
         stockDatabase.put("RELIANCE", new StockData("RELIANCE", "Reliance Industries Ltd.", 2500.0, 16900000000000L, 25.0, 2750.0, 2200.0, 0.35));
@@ -33,19 +43,55 @@ public class MarketDataService {
         stockDatabase.put("TATAMOTORS", new StockData("TATAMOTORS", "Tata Motors Ltd.", 650.0, 2400000000000L, 8.0, 800.0, 500.0, 0.3));
     }
     
+    public List<StockData> getAllStocks() {
+        List<StockData> stocks = new ArrayList<>();
+        for (Map.Entry<String, StockData> entry : stockDatabase.entrySet()) {
+            StockData base = entry.getValue();
+            // Get live price
+            StockData live = getStockPrice(entry.getKey());
+            double price = live != null ? live.getPrice() : base.getPrice();
+            stocks.add(new StockData(
+                entry.getKey(),
+                base.getName(),
+                price,
+                base.getMarketCap(),
+                base.getPeRatio(),
+                base.getWeek52High(),
+                base.getWeek52Low(),
+                base.getDividendYield()
+            ));
+        }
+        return stocks;
+    }
+    
     public StockData getStockPrice(String symbol) {
-        // Add some random variation to simulate price changes
-        StockData base = stockDatabase.get(symbol.toUpperCase());
+        if (symbol == null || symbol.isBlank()) {
+            return null;
+        }
+
+        String normalized = symbol.toUpperCase(Locale.ROOT);
+
+        // Primary source: mock market-data server
+        try {
+            StockData fromMock = fetchFromMockServer(normalized);
+            if (fromMock != null) {
+                return fromMock;
+            }
+        } catch (Exception ignored) {
+            // fall back to local cache
+        }
+
+        // Fallback: local cache with slight random variation
+        StockData base = stockDatabase.get(normalized);
         if (base == null) {
             return null;
         }
+
         double variation = (Math.random() - 0.5) * 0.02; // +/- 1% variation
         double newPrice = base.getPrice() * (1 + variation);
-        double change = newPrice - base.getPrice();
-        double changePercent = (change / base.getPrice()) * 100;
-        
+
         return new StockData(
-            symbol.toUpperCase(),
+            normalized,
             base.getName(),
             Math.round(newPrice * 100.0) / 100.0,
             base.getMarketCap(),
@@ -54,6 +100,123 @@ public class MarketDataService {
             base.getWeek52Low(),
             base.getDividendYield()
         );
+    }
+
+    public MockQuote fetchQuote(String symbol) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(MARKET_DATA_BASE_URL + "/market/" + symbol))
+            .GET()
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            return null;
+        }
+
+        String body = response.body();
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+
+        // Minimal JSON parsing (avoid adding new dependencies):
+        // expected shape: {"success":true,"data":{"symbol":"TCS","name":"...","current_price":3200.12,...}}
+        String name = extractJsonString(body, "\"name\"");
+        Double currentPrice = extractJsonNumber(body, "\"current_price\"");
+        Double change = extractJsonNumber(body, "\"change\"");
+        Double changePercent = extractJsonNumber(body, "\"change_percent\"");
+        String timestamp = extractJsonString(body, "\"timestamp\"");
+
+        if (name == null || currentPrice == null) {
+            return null;
+        }
+
+        return new MockQuote(
+            symbol,
+            name,
+            Math.round(currentPrice * 100.0) / 100.0,
+            change != null ? change : 0.0,
+            changePercent != null ? changePercent : 0.0,
+            timestamp
+        );
+    }
+
+    public StockData fetchFromMockServer(String symbol) throws IOException, InterruptedException {
+        MockQuote quote = fetchQuote(symbol);
+        if (quote == null) {
+            return null;
+        }
+
+        // Reuse fundamentals from local cache (marketCap/PE/52W/divYield) if present, else default to 0.
+        StockData base = stockDatabase.get(symbol);
+
+        return new StockData(
+            symbol,
+            quote.name,
+            quote.currentPrice,
+            base != null ? base.getMarketCap() : 0L,
+            base != null ? base.getPeRatio() : 0.0,
+            base != null ? base.getWeek52High() : 0.0,
+            base != null ? base.getWeek52Low() : 0.0,
+            base != null ? base.getDividendYield() : 0.0
+        );
+    }
+
+    public static class MockQuote {
+        public final String symbol;
+        public final String name;
+        public final double currentPrice;
+        public final double change;
+        public final double changePercent;
+        public final String timestamp;
+
+        public MockQuote(String symbol, String name, double currentPrice, double change, double changePercent, String timestamp) {
+            this.symbol = symbol;
+            this.name = name;
+            this.currentPrice = currentPrice;
+            this.change = change;
+            this.changePercent = changePercent;
+            this.timestamp = timestamp;
+        }
+    }
+
+    private static String extractJsonString(String json, String key) {
+        int keyIndex = json.indexOf(key);
+        if (keyIndex < 0) return null;
+        int colon = json.indexOf(':', keyIndex);
+        if (colon < 0) return null;
+        int firstQuote = json.indexOf('"', colon + 1);
+        if (firstQuote < 0) return null;
+        int secondQuote = json.indexOf('"', firstQuote + 1);
+        if (secondQuote < 0) return null;
+        return json.substring(firstQuote + 1, secondQuote);
+    }
+
+    private static Double extractJsonNumber(String json, String key) {
+        int keyIndex = json.indexOf(key);
+        if (keyIndex < 0) return null;
+        int colon = json.indexOf(':', keyIndex);
+        if (colon < 0) return null;
+
+        int i = colon + 1;
+        while (i < json.length() && Character.isWhitespace(json.charAt(i))) i++;
+
+        int start = i;
+        while (i < json.length()) {
+            char c = json.charAt(i);
+            if ((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+') {
+                i++;
+            } else {
+                break;
+            }
+        }
+        if (start == i) return null;
+
+        try {
+            return Double.parseDouble(json.substring(start, i));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
     
     public StockData getStockInfo(String symbol) {

@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,16 +67,31 @@ public class TransactionsController {
         Transaction transaction = new Transaction();
         transaction.setSymbol(((String) request.get("symbol")).toUpperCase());
         transaction.setType(((String) request.get("type")).toUpperCase());
-        transaction.setQuantity(((Number) request.get("quantity")).doubleValue());
-        transaction.setPrice(((Number) request.get("price")).doubleValue());
         
-        if (request.containsKey("date") && request.get("date") != null) {
-            try {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-                transaction.setTransactionDate(sdf.parse((String) request.get("date")));
-            } catch (Exception e) {
-                // Fall back to current date if parsing fails
-            }
+        if (request.containsKey("quantity")) {
+            transaction.setQuantity(((Number) request.get("quantity")).doubleValue());
+        }
+        
+        // Order type - MARKET, LIMIT, STOP_LOSS, STOP_LIMIT
+        if (request.containsKey("orderType")) {
+            transaction.setOrderType((String) request.get("orderType"));
+        } else {
+            transaction.setOrderType("MARKET");
+        }
+        
+        // Limit price for limit orders
+        if (request.containsKey("limitPrice")) {
+            transaction.setLimitPrice(((Number) request.get("limitPrice")).doubleValue());
+        }
+        
+        // Stop price for stop orders
+        if (request.containsKey("stopPrice")) {
+            transaction.setStopPrice(((Number) request.get("stopPrice")).doubleValue());
+        }
+        
+        // Price is optional - will be auto-fetched for market orders
+        if (request.containsKey("price") && request.get("price") != null) {
+            transaction.setPrice(((Number) request.get("price")).doubleValue());
         }
         
         if (request.containsKey("notes")) {
@@ -96,8 +110,67 @@ public class TransactionsController {
         data.put("type", savedTransaction.getType());
         data.put("quantity", savedTransaction.getQuantity());
         data.put("price", savedTransaction.getPrice());
+        data.put("orderType", savedTransaction.getOrderType());
+        data.put("status", savedTransaction.getStatus());
         data.put("total", savedTransaction.getQuantity() * savedTransaction.getPrice());
         data.put("date", savedTransaction.getTransactionDate());
+        
+        response.put("data", data);
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/advanced")
+    public ResponseEntity<?> placeAdvancedOrder(@RequestBody Map<String, Object> request, Authentication authentication) {
+        String username = authentication.getName();
+        
+        Transaction transaction = new Transaction();
+        transaction.setSymbol(((String) request.get("symbol")).toUpperCase());
+        transaction.setType(((String) request.get("type")).toUpperCase());
+        
+        if (request.containsKey("quantity")) {
+            transaction.setQuantity(((Number) request.get("quantity")).doubleValue());
+        }
+        
+        // Required order type
+        String orderType = (String) request.get("orderType");
+        if (orderType == null || orderType.isEmpty()) {
+            orderType = "MARKET";
+        }
+        transaction.setOrderType(orderType);
+        
+        // Limit price
+        if (request.containsKey("limitPrice")) {
+            transaction.setLimitPrice(((Number) request.get("limitPrice")).doubleValue());
+        }
+        
+        // Stop price
+        if (request.containsKey("stopPrice")) {
+            transaction.setStopPrice(((Number) request.get("stopPrice")).doubleValue());
+        }
+        
+        if (request.containsKey("notes")) {
+            transaction.setNotes((String) request.get("notes"));
+        }
+        
+        Transaction savedTransaction = transactionsService.placeAdvancedOrder(transaction, username);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", "EXECUTED".equals(savedTransaction.getStatus()));
+        response.put("message", "Order " + savedTransaction.getStatus().toLowerCase());
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", savedTransaction.getId());
+        data.put("symbol", savedTransaction.getSymbol());
+        data.put("type", savedTransaction.getType());
+        data.put("quantity", savedTransaction.getQuantity());
+        data.put("price", savedTransaction.getPrice());
+        data.put("orderType", savedTransaction.getOrderType());
+        data.put("status", savedTransaction.getStatus());
+        data.put("limitPrice", savedTransaction.getLimitPrice());
+        data.put("stopPrice", savedTransaction.getStopPrice());
+        data.put("total", savedTransaction.getQuantity() * savedTransaction.getPrice());
         
         response.put("data", data);
         response.put("timestamp", System.currentTimeMillis());

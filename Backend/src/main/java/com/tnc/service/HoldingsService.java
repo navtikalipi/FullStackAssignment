@@ -52,6 +52,17 @@ public class HoldingsService {
         
         holding.setUser(user);
         
+        // Get current price from market data first
+        MarketDataService.StockData stock = marketDataService.getStockPrice(holding.getSymbol());
+        if (stock == null) {
+            throw new RuntimeException("Unable to fetch live price for " + holding.getSymbol());
+        }
+        
+        // If averageCost is not provided, use current market price
+        if (holding.getAverageCost() == null || holding.getAverageCost() <= 0) {
+            holding.setAverageCost(stock.getPrice());
+        }
+        
         // Assign default portfolio (create one if none exists)
         Portfolio portfolio = portfolioRepository.findByUserIdAndIsDefault(user.getId(), true)
                 .orElseGet(() -> {
@@ -70,15 +81,12 @@ public class HoldingsService {
         
         holding.setTotalCost(holding.getQuantity() * holding.getAverageCost());
         
-        // Get current price from market data
-        MarketDataService.StockData stock = marketDataService.getStockPrice(holding.getSymbol());
-        if (stock != null) {
-            holding.setCurrentPrice(stock.getPrice());
-            holding.setCurrentValue(holding.getQuantity() * stock.getPrice());
-            holding.setProfitLoss(holding.getCurrentValue() - holding.getTotalCost());
-            if (holding.getTotalCost() > 0) {
-                holding.setProfitLossPercentage((holding.getProfitLoss() / holding.getTotalCost()) * 100);
-            }
+        // Set current price from market data
+        holding.setCurrentPrice(stock.getPrice());
+        holding.setCurrentValue(holding.getQuantity() * stock.getPrice());
+        holding.setProfitLoss(holding.getCurrentValue() - holding.getTotalCost());
+        if (holding.getTotalCost() > 0) {
+            holding.setProfitLossPercentage((holding.getProfitLoss() / holding.getTotalCost()) * 100);
         }
         
         return holdingRepository.save(holding);
@@ -103,5 +111,22 @@ public class HoldingsService {
                 holdingRepository.save(holding);
             }
         }
+    }
+
+    public void assignDefaultPortfolio(Holding holding, User user) {
+        Portfolio portfolio = portfolioRepository.findByUserIdAndIsDefault(user.getId(), true)
+                .orElseGet(() -> {
+                    Portfolio defaultPortfolio = new Portfolio();
+                    defaultPortfolio.setName("Default Portfolio");
+                    defaultPortfolio.setDescription("Auto-created default portfolio");
+                    defaultPortfolio.setIsDefault(true);
+                    defaultPortfolio.setUser(user);
+                    defaultPortfolio.setTotalValue(0.0);
+                    defaultPortfolio.setTotalCost(0.0);
+                    defaultPortfolio.setTotalProfitLoss(0.0);
+                    defaultPortfolio.setCreatedAt(new Date());
+                    return portfolioRepository.save(defaultPortfolio);
+                });
+        holding.setPortfolio(portfolio);
     }
 }

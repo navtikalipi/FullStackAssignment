@@ -34,6 +34,22 @@ public class HoldingsController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/refresh")
+    public ResponseEntity<?> refreshPrices(Authentication authentication) {
+        String username = authentication.getName();
+        holdingsService.updateCurrentPrices(username);
+        
+        List<Holding> holdings = holdingsService.getAllHoldings(username);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Prices refreshed from live market");
+        response.put("data", holdings);
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getHoldingById(@PathVariable Long id, Authentication authentication) {
         String username = authentication.getName();
@@ -61,7 +77,11 @@ public class HoldingsController {
         Holding holding = new Holding();
         holding.setSymbol(((String) request.get("symbol")).toUpperCase());
         holding.setQuantity(((Number) request.get("quantity")).doubleValue());
-        holding.setAverageCost(((Number) request.get("purchasePrice")).doubleValue());
+        
+        // Purchase price is now optional - will be fetched from live market if not provided
+        if (request.containsKey("purchasePrice") && request.get("purchasePrice") != null) {
+            holding.setAverageCost(((Number) request.get("purchasePrice")).doubleValue());
+        }
         
         if (request.containsKey("portfolioId")) {
             // Set portfolio if provided
@@ -71,7 +91,7 @@ public class HoldingsController {
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
-        response.put("message", "Holding created successfully");
+        response.put("message", "Holding created successfully with live market price");
         response.put("data", savedHolding);
         response.put("timestamp", System.currentTimeMillis());
         
