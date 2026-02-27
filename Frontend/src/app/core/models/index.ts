@@ -116,6 +116,9 @@ export interface CreateHoldingRequest {
 }
 
 // ── Transactions ──
+export type OrderType = 'MARKET' | 'LIMIT' | 'STOP_LOSS' | 'STOP_LIMIT';
+export type TransactionStatus = 'PENDING' | 'EXECUTED' | 'CANCELLED' | 'FAILED';
+
 export interface Transaction {
   id: number;
   symbol: string;
@@ -125,15 +128,22 @@ export interface Transaction {
   total: number;
   date: string;
   fees: number;
+  orderType?: OrderType;
+  limitPrice?: number;
+  stopPrice?: number;
+  status?: TransactionStatus;
 }
 
 export interface CreateTransactionRequest {
   symbol: string;
   type: 'buy' | 'sell';
   quantity: number;
-  price: number;
-  date: string;
-  fees: number;
+  price?: number;
+  date?: string;
+  fees?: number;
+  orderType?: OrderType;
+  limitPrice?: number;
+  stopPrice?: number;
 }
 
 // ── Market Data ──
@@ -156,6 +166,29 @@ export interface StockInfo {
   dividendYield: number;
 }
 
+// ── Market Data History ──
+export interface MarketDataPoint {
+  id: number;
+  symbol: string;
+  name: string;
+  openPrice: number;
+  highPrice: number;
+  lowPrice: number;
+  closePrice: number;
+  volume: number;
+  previousClose: number;
+  change: number;
+  changePercent: number;
+  recordedAt: string;
+}
+
+// ── Chart Data ──
+export interface ChartDataPoint {
+  time: string;
+  price: number;
+  volume?: number;
+}
+
 // ── Analytics ──
 export interface AllocationItem {
   value: number;
@@ -175,6 +208,8 @@ export interface GenerateReportRequest {
 
 export interface ReportResponse {
   reportId: string;
+  fileName?: string;
+  filePath?: string;
   status: string;
   createdAt: string;
 }

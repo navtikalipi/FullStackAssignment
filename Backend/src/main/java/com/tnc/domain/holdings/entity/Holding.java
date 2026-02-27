@@ -1,6 +1,7 @@
 package com.tnc.domain.holdings.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tnc.persistence.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,6 +21,7 @@ public class Holding extends BaseEntity {
     private Double quantity;
 
     @Column(name = "average_cost", nullable = false)
+    @JsonProperty("purchasePrice")
     private Double averageCost;
 
     @Column(name = "current_price")
@@ -32,9 +34,11 @@ public class Holding extends BaseEntity {
     private Double currentValue;
 
     @Column(name = "profit_loss")
+    @JsonProperty("pnL")
     private Double profitLoss;
 
     @Column(name = "profit_loss_percentage")
+    @JsonProperty("pnLPercentage")
     private Double profitLossPercentage;
 
     @ManyToOne

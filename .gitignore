@@ -4,8 +4,6 @@ target/
 !**/src/test/**/target/
 .kotlin
 
-reports/
-
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
@@ -39,5 +37,3 @@ build/
 
 ### Mac OS ###
 .DS_Store
-
-.classpath

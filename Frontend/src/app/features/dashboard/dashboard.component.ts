@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { forkJoin } from 'rxjs';
+import { forkJoin, interval, Subscription } from 'rxjs';
 import { InrPipe } from '../../shared/pipes/inr.pipe';
 import { PortfolioService } from '../../core/services/portfolio.service';
 import { HoldingsService } from '../../core/services/holdings.service';
@@ -16,8 +16,19 @@ import { DashboardData, PnLData, WinRateData, ReturnsData, Holding } from '../..
   template: `
     <div class="dashboard">
       <div class="page-header">
-        <h2>Portfolio Dashboard</h2>
-        <p class="subtitle">Your investment overview at a glance</p>
+        <div class="header-left">
+          <h2>Portfolio Dashboard</h2>
+          <p class="subtitle">Your investment overview at a glance</p>
+        </div>
+        <div class="header-right">
+          <div class="live-indicator">
+            <span class="live-dot"></span> Live
+          </div>
+          <button class="refresh-btn" (click)="refreshData()" [disabled]="loading">
+            <span class="refresh-icon" [class.spinning]="loading">🔄</span>
+            Refresh
+          </button>
+        </div>
       </div>
 
       @if (loading) {
@@ -207,9 +218,56 @@ import { DashboardData, PnLData, WinRateData, ReturnsData, Holding } from '../..
   `,
   styles: [`
     .dashboard { max-width: 1200px; margin: 0 auto; }
-    .page-header { margin-bottom: 24px; }
-    .page-header h2 { font-size: 24px; color: #1a1a2e; margin: 0; }
-    .page-header .subtitle { color: #666; font-size: 14px; margin-top: 4px; }
+    .page-header { 
+      margin-bottom: 24px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-start; 
+    }
+    .header-left h2 { font-size: 24px; color: #1a1a2e; margin: 0; }
+    .header-left .subtitle { color: #666; font-size: 14px; margin-top: 4px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    
+    .live-indicator { 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+      color: #00c853; 
+      font-weight: 600; 
+      font-size: 12px; 
+    }
+    .live-dot { 
+      width: 8px; 
+      height: 8px; 
+      background: #00c853; 
+      border-radius: 50%; 
+      animation: pulse 1.5s infinite; 
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover:not(:disabled) {
+      background: #f7f8fa;
+      border-color: #3a7bd5;
+      color: #3a7bd5;
+    }
+    .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .refresh-icon { font-size: 14px; display: inline-block; }
+    .refresh-icon.spinning { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-state {
       display: flex; flex-direction: column; align-items: center;
@@ -330,13 +388,16 @@ import { DashboardData, PnLData, WinRateData, ReturnsData, Holding } from '../..
     }
   `]
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   loading = true;
   dashboard: DashboardData | null = null;
   pnlData: PnLData | null = null;
   winRate: WinRateData | null = null;
   returns: ReturnsData | null = null;
   holdings: Holding[] = [];
+
+  private refreshSubscription?: Subscription;
+  private readonly REFRESH_INTERVAL = 1000; // 1 second
 
   holdingsPieData: ChartData<'doughnut'> = { labels: [], datasets: [] };
   pieOptions: ChartConfiguration<'doughnut'>['options'] = {
@@ -353,6 +414,19 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadData();
+    
+    // Auto-refresh every 1 second for live data
+    this.refreshSubscription = interval(this.REFRESH_INTERVAL).subscribe(() => {
+      this.loadData();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.refreshSubscription?.unsubscribe();
+  }
+
+  loadData(): void {
     forkJoin({
       dashboard: this.portfolioService.getDashboard(),
       pnl: this.portfolioService.getPnL(),
@@ -373,6 +447,11 @@ export class DashboardComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  refreshData(): void {
+    this.loading = true;
+    this.loadData();
   }
 
   buildPieChart(): void {
