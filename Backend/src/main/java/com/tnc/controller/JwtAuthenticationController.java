@@ -2,6 +2,7 @@ package com.tnc.controller;
 
 import java.util.Objects;
 
+import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tnc.config.JwtTokenUtil;
 import com.tnc.model.JwtRequest;
 import com.tnc.model.JwtResponse;
+import com.tnc.repository.UserRepository;
 
 @RestController
 @CrossOrigin
@@ -33,6 +35,9 @@ public class JwtAuthenticationController {
 	@Autowired
 	private UserDetailsService jwtInMemoryUserDetailsService;
 
+	@Autowired
+	private UserRepository userRepository;
+
 	@RequestMapping(value = "/authenticate", method = RequestMethod.POST)
 	public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest)
 			throws Exception {
@@ -43,8 +48,15 @@ public class JwtAuthenticationController {
 				.loadUserByUsername(authenticationRequest.getUsername());
 
 		final String token = jwtTokenUtil.generateToken(userDetails);
+		
+		// Get user ID from database
+		Long userId = null;
+		var user = userRepository.findByUsername(authenticationRequest.getUsername());
+		if (user.isPresent()) {
+			userId = user.get().getId();
+		}
 
-		return ResponseEntity.ok(new JwtResponse(token));
+		return ResponseEntity.ok(new JwtResponse(token, userId));
 	}
 
 	private void authenticate(String username, String password) throws Exception {
@@ -60,3 +72,4 @@ public class JwtAuthenticationController {
 		}
 	}
 }
+

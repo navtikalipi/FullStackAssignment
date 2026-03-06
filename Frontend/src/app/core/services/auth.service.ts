@@ -10,6 +10,7 @@ export class AuthService {
   private apiUrl = environment.apiUrl;
   private tokenKey = 'auth_token';
   private usernameKey = 'auth_username';
+  private userIdKey = 'user_id';
   private isLoggedInSubject = new BehaviorSubject<boolean>(this.hasToken());
 
   isLoggedIn$ = this.isLoggedInSubject.asObservable();
@@ -25,6 +26,10 @@ export class AuthService {
       tap(response => {
         this.setToken(response.token);
         this.setUsername(request.username);
+        // Store user ID if available in response
+        if (response.userId) {
+          this.setUserId(response.userId);
+        }
         this.isLoggedInSubject.next(true);
       })
     );
@@ -33,6 +38,7 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.usernameKey);
+    localStorage.removeItem(this.userIdKey);
     this.isLoggedInSubject.next(false);
     this.router.navigate(['/login']);
   }
@@ -45,6 +51,10 @@ export class AuthService {
     return localStorage.getItem(this.usernameKey);
   }
 
+  getUserId(): string | null {
+    return localStorage.getItem(this.userIdKey);
+  }
+
   hasToken(): boolean {
     return !!this.getToken();
   }
@@ -55,5 +65,9 @@ export class AuthService {
 
   private setUsername(username: string): void {
     localStorage.setItem(this.usernameKey, username);
+  }
+
+  private setUserId(userId: number): void {
+    localStorage.setItem(this.userIdKey, userId.toString());
   }
 }

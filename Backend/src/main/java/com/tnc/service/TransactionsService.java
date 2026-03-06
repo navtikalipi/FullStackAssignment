@@ -34,6 +34,9 @@ public class TransactionsService {
     @Autowired
     private MarketDataService marketDataService;
 
+    @Autowired
+    private PaymentServiceClient paymentServiceClient;
+
     public List<Transaction> getAllTransactions(String username, String type, Integer limit, Integer offset) {
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) {
@@ -128,7 +131,29 @@ public class TransactionsService {
         }
         transaction.setTransactionTime(new Date());
         
+        // Check balance for BUY transactions before executing
+        if ("BUY".equalsIgnoreCase(transaction.getType())) {
+            double totalCost = transaction.getQuantity() * transaction.getPrice();
+            Double currentBalance = paymentServiceClient.getBalance(user.getId());
+            
+            if (currentBalance < totalCost) {
+                throw new RuntimeException("Insufficient balance. Required: " + totalCost + ", Available: " + currentBalance);
+            }
+            
+            // Deduct balance for purchase
+            boolean deducted = paymentServiceClient.deductBalance(user.getId(), totalCost);
+            if (!deducted) {
+                throw new RuntimeException("Failed to deduct balance for purchase");
+            }
+        }
+        
         Transaction savedTransaction = transactionRepository.save(transaction);
+        
+        // For SELL transactions, add the sale amount to balance
+        if ("SELL".equalsIgnoreCase(transaction.getType()) && "EXECUTED".equals(savedTransaction.getStatus())) {
+            double totalSaleAmount = transaction.getQuantity() * transaction.getPrice();
+            paymentServiceClient.addBalance(user.getId(), totalSaleAmount);
+        }
         
         // Update holdings if order is executed
         if ("EXECUTED".equals(savedTransaction.getStatus())) {

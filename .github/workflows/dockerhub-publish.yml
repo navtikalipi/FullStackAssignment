@@ -1,0 +1,64 @@
+name: Build and publish Docker images
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_PREFIX: ${{ secrets.DOCKERHUB_USERNAME }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./Backend
+          file: ./Backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/fullstack-backend:latest
+            ${{ env.IMAGE_PREFIX }}/fullstack-backend:${{ github.sha }}
+
+      - name: Build and push payment microservice image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./PaymentMicroService
+          file: ./PaymentMicroService/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/fullstack-payment:latest
+            ${{ env.IMAGE_PREFIX }}/fullstack-payment:${{ github.sha }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./Frontend
+          file: ./Frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/fullstack-frontend:latest
+            ${{ env.IMAGE_PREFIX }}/fullstack-frontend:${{ github.sha }}
+
+      - name: Image list
+        run: |
+          echo "Built images:"
+          echo "${{ env.IMAGE_PREFIX }}/fullstack-backend:latest"
+          echo "${{ env.IMAGE_PREFIX }}/fullstack-payment:latest"
+          echo "${{ env.IMAGE_PREFIX }}/fullstack-frontend:latest"
