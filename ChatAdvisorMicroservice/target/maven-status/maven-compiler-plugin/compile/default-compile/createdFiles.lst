@@ -1,0 +1,16 @@
+com\tnc\chatadvisor\controller\ChatHistoryController.class
+com\tnc\chatadvisor\controller\ChatAdvisorController.class
+com\tnc\chatadvisor\model\ChatResponse.class
+com\tnc\chatadvisor\entity\ChatSession.class
+com\tnc\chatadvisor\config\AppConfig.class
+com\tnc\chatadvisor\repository\ChatSessionRepository.class
+com\tnc\chatadvisor\service\ChatService.class
+com\tnc\chatadvisor\config\ChatProperties.class
+com\tnc\chatadvisor\model\ChatRequest.class
+META-INF\spring-configuration-metadata.json
+com\tnc\chatadvisor\model\ChatMessage.class
+com\tnc\chatadvisor\config\ChatAdvisorConfig.class
+com\tnc\chatadvisor\config\ChatConfig.class
+com\tnc\chatadvisor\service\ChatHistoryService.class
+com\tnc\chatadvisor\ChatAdvisorApplication.class
+com\tnc\chatadvisor\config\BackendConfig.class

@@ -21,9 +21,6 @@ import com.tnc.model.JwtRequest;
 import com.tnc.model.JwtResponse;
 
 @RestController
-@CrossOrigin(
-    origins = {"http://stockfolio.duckdns.org", "https://stockfolio.duckdns.org", "http://localhost"}
-)
 public class JwtAuthenticationController {
 
 	@Autowired

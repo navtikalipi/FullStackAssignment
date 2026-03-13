@@ -112,9 +112,11 @@ export class SidebarComponent {
     { label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard', exact: true },
     { label: 'Holdings', icon: 'briefcase', route: '/holdings' },
     { label: 'Transactions', icon: 'receipt', route: '/transactions' },
-    { label: 'Market Data', icon: 'line-chart', route: '/market' },
+    { label: 'Market (Live trading)', icon: 'line-chart', route: '/market' },
     { label: 'Analytics', icon: 'bar-chart', route: '/analytics' },
+    { label: 'Chat Assistance', icon: 'messages-square', route: '/chat-advisor' },
     { label: 'Reports', icon: 'file-text', route: '/reports' },
     { label: 'Wallet', icon: 'wallet', route: '/wallet' }
   ];
+
 }

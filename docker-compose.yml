@@ -27,6 +27,23 @@ services:
     ports:
       - "8090:8090"
 
+  chatadvisor:
+    image: ${DOCKERHUB_USERNAME:-navlipi}/stockfolio-chatadvisor:latest
+    build:
+      context: ./ChatAdvisorMicroservice
+      dockerfile: Dockerfile
+    container_name: stockfolio-chatadvisor
+    ports:
+      - "8787:8787"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-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}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql-51d298d-ma-6fc9.f.aivencloud.com:20048/defaultdb?useSSL=true&verifyServerCertificate=false}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-avnadmin}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-AVNS_QVS5dap6-hggtYEAiyx}
+    depends_on:
+      backend:
+        condition: service_started
+
   backend:
     image: ${DOCKERHUB_USERNAME:-navlipi}/stockfolio-backend:latest
     build:
@@ -34,9 +51,9 @@ services:
       dockerfile: Dockerfile
     container_name: stockfolio-backend
     environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql-51d298d-ma-6fc9.f.aivencloud.com:20048/defaultdb?useSSL=true&verifyServerCertificate=false}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-avnadmin}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-AVNS_QVS5dap6-hggtYEAiyx}
       WALLET_SERVICE_URL: http://wallet:8091
       MARKET_DATA_BASE_URL: http://market-data:7666
       JWT_SECRET: thisisatncproject
@@ -53,6 +70,11 @@ services:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
+      args:
+        - API_URL=http://${DOMAIN:-http://stockfolio.duckdns.org}:${BACKEND_PORT:-8080}
+        - ABOUT_API_URL=http://${DOMAIN:-http://stockfolio.duckdns.org}:${ABOUT_PORT:-8090}
+        - WALLET_API_URL=http://${DOMAIN:-http://stockfolio.duckdns.org}:${WALLET_PORT:-8091}
+        - CHAT_API_URL=http://${DOMAIN:-http://stockfolio.duckdns.org}:${CHAT_PORT:-8787}
     container_name: stockfolio-frontend
     ports:
       - "80:80"

@@ -17,9 +17,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/reports")
-@CrossOrigin(
-    origins = {"http://stockfolio.duckdns.org", "https://stockfolio.duckdns.org", "http://localhost"}
-)
 public class ReportsController {
 
     @Autowired

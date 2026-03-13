@@ -1,0 +1,77 @@
+{
+  "groups": [
+    {
+      "name": "backend",
+      "type": "com.tnc.chatadvisor.config.BackendConfig",
+      "sourceType": "com.tnc.chatadvisor.config.BackendConfig"
+    },
+    {
+      "name": "chat",
+      "type": "com.tnc.chatadvisor.config.ChatProperties",
+      "sourceType": "com.tnc.chatadvisor.config.ChatProperties"
+    },
+    {
+      "name": "openrouter",
+      "type": "com.tnc.chatadvisor.config.ChatConfig",
+      "sourceType": "com.tnc.chatadvisor.config.ChatConfig"
+    }
+  ],
+  "properties": [
+    {
+      "name": "backend.holdings-path",
+      "type": "java.lang.String",
+      "sourceType": "com.tnc.chatadvisor.config.BackendConfig"
+    },
+    {
+      "name": "backend.market-path",
+      "type": "java.lang.String",
+      "sourceType": "com.tnc.chatadvisor.config.BackendConfig"
+    },
+    {
+      "name": "backend.transactions-path",
+      "type": "java.lang.String",
+      "sourceType": "com.tnc.chatadvisor.config.BackendConfig"
+    },
+    {
+      "name": "backend.url",
+      "type": "java.lang.String",
+      "sourceType": "com.tnc.chatadvisor.config.BackendConfig"
+    },
+    {
+      "name": "chat.max-tokens",
+      "type": "java.lang.Integer",
+      "sourceType": "com.tnc.chatadvisor.config.ChatProperties"
+    },
+    {
+      "name": "chat.temperature",
+      "type": "java.lang.Double",
+      "sourceType": "com.tnc.chatadvisor.config.ChatProperties"
+    },
+    {
+      "name": "openrouter.api-key",
+      "type": "java.lang.String",
+      "sourceType": "com.tnc.chatadvisor.config.ChatConfig"
+    },
+    {
+      "name": "openrouter.base-url",
+      "type": "java.lang.String",
+      "sourceType": "com.tnc.chatadvisor.config.ChatConfig"
+    },
+    {
+      "name": "openrouter.max-tokens",
+      "type": "java.lang.Integer",
+      "sourceType": "com.tnc.chatadvisor.config.ChatConfig"
+    },
+    {
+      "name": "openrouter.model",
+      "type": "java.lang.String",
+      "sourceType": "com.tnc.chatadvisor.config.ChatConfig"
+    },
+    {
+      "name": "openrouter.temperature",
+      "type": "java.lang.Double",
+      "sourceType": "com.tnc.chatadvisor.config.ChatConfig"
+    }
+  ],
+  "hints": []
+}

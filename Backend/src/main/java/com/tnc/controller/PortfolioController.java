@@ -11,9 +11,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/portfolio")
-@CrossOrigin(
-    origins = {"http://stockfolio.duckdns.org", "https://stockfolio.duckdns.org", "http://localhost"}
-)
 public class PortfolioController {
 
     @Autowired

@@ -37,6 +37,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/analytics/analytics.component').then(m => m.AnalyticsComponent)
       },
       {
+        path: 'chat-advisor',
+        loadComponent: () => import('./features/chat-advisor/chat-advisor.component').then(m => m.ChatAdvisorComponent)
+      },
+      {
         path: 'reports',
         loadComponent: () => import('./features/reports/reports.component').then(m => m.ReportsComponent)
       },

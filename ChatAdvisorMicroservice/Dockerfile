@@ -1,0 +1,17 @@
+# Stage 1: Build
+FROM maven:3.9.12-eclipse-temurin-17 AS build
+WORKDIR /app
+
+COPY pom.xml ./
+RUN mvn -DskipTests dependency:go-offline
+
+COPY src ./src
+RUN mvn -q -DskipTests package org.springframework.boot:spring-boot-maven-plugin:2.6.6:repackage \
+    && cp $(ls target/*.jar | grep -v "original" | head -n 1) target/app.jar
+
+# Stage 2: Run
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /app/target/app.jar app.jar
+EXPOSE 8787
+ENTRYPOINT ["java", "-jar", "app.jar"]
