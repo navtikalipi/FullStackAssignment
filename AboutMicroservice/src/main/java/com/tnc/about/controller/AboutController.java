@@ -2,6 +2,7 @@ package com.tnc.about.controller;
 
 import com.tnc.about.service.AboutService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,11 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/")
-@CrossOrigin(
-    origins = {"http://stockfolio.duckdns.org", "https://stockfolio.duckdns.org", "http://localhost"},
-    allowedHeaders = {"Authorization", "Content-Type", "X-Requested-With"},
-    allowCredentials = "true"
-)
+@CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class AboutController {
 
     @Autowired

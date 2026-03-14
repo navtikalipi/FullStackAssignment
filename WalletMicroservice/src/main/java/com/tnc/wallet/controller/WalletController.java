@@ -17,11 +17,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/")
-@CrossOrigin(
-    origins = {"http://stockfolio.duckdns.org", "https://stockfolio.duckdns.org", "http://localhost"},
-    allowedHeaders = {"Authorization", "Content-Type", "X-Requested-With"},
-    allowCredentials = "true"
-)
+@CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class WalletController {
 
     @Autowired

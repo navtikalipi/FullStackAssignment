@@ -17,6 +17,8 @@ services:
     container_name: stockfolio-wallet
     ports:
       - "8091:8091"
+    environment:
+      - FRONTEND_ORIGINS=${FRONTEND_ORIGINS:-http://stockfolio.duckdns.org,https://stockfolio.duckdns.org,http://localhost}
 
   about:
     image: ${DOCKERHUB_USERNAME:-navlipi}/stockfolio-about:latest
@@ -36,10 +38,11 @@ services:
     ports:
       - "8787:8787"
     environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-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}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql-51d298d-ma-6fc9.f.aivencloud.com:20048/defaultdb?useSSL=true&verifyServerCertificate=false}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-avnadmin}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-AVNS_QVS5dap6-hggtYEAiyx}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://stockfolio.duckdns.org,https://stockfolio.duckdns.org,http://localhost}
     depends_on:
       backend:
         condition: service_started
@@ -57,6 +60,7 @@ services:
       WALLET_SERVICE_URL: http://wallet:8091
       MARKET_DATA_BASE_URL: http://market-data:7666
       JWT_SECRET: thisisatncproject
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://stockfolio.duckdns.org,https://stockfolio.duckdns.org,http://localhost}
     ports:
       - "8080:8080"
     depends_on:

@@ -13,7 +13,7 @@ import java.time.Duration;
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://stockfolio.duckdns.org", "https://stockfolio.duckdns.org", "http://localhost"})
+@CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class ChatAdvisorController {
 
     private final ChatService chatService;

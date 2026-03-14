@@ -11,7 +11,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/chat/history")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://stockfolio.duckdns.org", "https://stockfolio.duckdns.org", "http://localhost"})
+@CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class ChatHistoryController {
 
     private final ChatSessionRepository chatSessionRepository;
